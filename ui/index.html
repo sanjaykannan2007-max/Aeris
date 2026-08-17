@@ -327,9 +327,9 @@
               <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-default); text-align: center;">
                 <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; text-align: left; display: flex; justify-content: space-between; align-items: center;">
                   <span><i class="fa-solid fa-cube" style="color: var(--color-cyan);"></i> Interactive 3D Turbofan Model (Click & Drag to Rotate)</span>
-                  <span class="mono" style="font-size: 0.72rem; color: var(--color-critical);"><i class="fa-solid fa-circle"></i> High Pressure Compressor (HPC) Fault Highlighted</span>
+                  <span id="fault-label-3d" class="mono" style="font-size: 0.72rem; color: var(--color-critical); transition: color 0.4s;"><i class="fa-solid fa-circle-notch fa-spin"></i> Analysing…</span>
                 </div>
-                <div id="threejs-container" style="width: 100%; height: 240px; position: relative; border-radius: var(--radius-md); overflow: hidden; background: rgba(5, 7, 12, 0.8); cursor: grab;">
+                <div id="threejs-container" style="width: 100%; height: 280px; position: relative; border-radius: var(--radius-md); overflow: hidden; background: #08101a; cursor: grab;">
                   <!-- Three.js Canvas appended dynamically -->
                 </div>
                 <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 0.5rem;">
