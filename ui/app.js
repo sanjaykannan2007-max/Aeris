@@ -176,115 +176,419 @@ document.addEventListener('DOMContentLoaded', () => {
   // 4b. Three.js Rotatable 3D Turbofan Model Renderer
   let scene3d, camera3d, renderer3d, engineGroup;
   let isDragging = false, previousMousePosition = { x: 0, y: 0 };
+  let faultParts = {}; // named mesh refs for dynamic fault highlighting
+  let faultPulseTime = 0;
+
+  function makeMetal(color, metalness = 0.75, roughness = 0.25) {
+    return new THREE.MeshStandardMaterial({ color, metalness, roughness });
+  }
 
   function init3DTurbofanEngine() {
     const container = document.getElementById('threejs-container');
     if (!container || scene3d) return;
 
     scene3d = new THREE.Scene();
-    scene3d.background = new THREE.Color(0x05070c);
+    scene3d.background = new THREE.Color(0x08101a);
+    scene3d.fog = new THREE.Fog(0x08101a, 40, 90);
 
-    camera3d = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera3d.position.set(0, 5, 25);
+    camera3d = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 500);
+    camera3d.position.set(4, 6, 28);
+    camera3d.lookAt(0, 0, 0);
 
-    renderer3d = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer3d = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer3d.setSize(container.clientWidth, container.clientHeight);
-    renderer3d.setPixelRatio(window.devicePixelRatio);
+    renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer3d.shadowMap.enabled = true;
+    renderer3d.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer3d.toneMappingExposure = 1.1;
     container.appendChild(renderer3d.domElement);
 
-    // Ambient & Directional Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene3d.add(ambientLight);
+    // ── LIGHTING ──────────────────────────────────────────────────────────────
+    scene3d.add(new THREE.AmbientLight(0xddeeff, 0.55));
 
-    const dirLight1 = new THREE.DirectionalLight(0x06b6d4, 1.2);
-    dirLight1.position.set(10, 15, 10);
-    scene3d.add(dirLight1);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+    keyLight.position.set(12, 18, 14);
+    keyLight.castShadow = true;
+    scene3d.add(keyLight);
 
-    const dirLight2 = new THREE.DirectionalLight(0xef4444, 0.8);
-    dirLight2.position.set(-10, -5, -10);
-    scene3d.add(dirLight2);
+    const fillLight = new THREE.DirectionalLight(0x7ec8e3, 0.5);
+    fillLight.position.set(-10, 4, 8);
+    scene3d.add(fillLight);
 
-    // Build Detailed Turbofan Subsystems Group
+    const rimLight = new THREE.DirectionalLight(0x334155, 0.7);
+    rimLight.position.set(0, -8, -14);
+    scene3d.add(rimLight);
+
+    // ── ENGINE GROUP ──────────────────────────────────────────────────────────
     engineGroup = new THREE.Group();
+    // Tilt for an isometric-style view like the reference image
+    engineGroup.rotation.x = Math.PI / 14;
+    engineGroup.rotation.y = -Math.PI / 5;
 
-    // 1. Fan Casing (Outer Cylinder)
-    const casingGeo = new THREE.CylinderGeometry(4.2, 4.0, 14, 32, 1, true);
-    const casingMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, opacity: 0.35, transparent: true, side: THREE.DoubleSide });
-    const casing = new THREE.Mesh(casingGeo, casingMat);
-    casing.rotation.z = Math.PI / 2;
-    engineGroup.add(casing);
+    const METAL_LIGHT   = makeMetal(0xc8d4dc, 0.80, 0.20);
+    const METAL_MID     = makeMetal(0x8ea0ae, 0.75, 0.30);
+    const METAL_DARK    = makeMetal(0x4a5a68, 0.70, 0.35);
+    const METAL_SILVER  = makeMetal(0xdde4ea, 0.85, 0.15);
 
-    // 2. Central Shaft Core
-    const shaftGeo = new THREE.CylinderGeometry(0.5, 0.5, 15, 16);
-    const shaftMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 });
-    const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+    // Helper: ring (torus-like disc section)
+    function addRing(parent, rx, ry, px, color, tag) {
+      const geo = new THREE.CylinderGeometry(rx, ry, 0.18, 40);
+      const mat = makeMetal(color, 0.78, 0.22);
+      const m = new THREE.Mesh(geo, mat);
+      m.rotation.z = Math.PI / 2;
+      m.position.x = px;
+      parent.add(m);
+      if (tag) faultParts[tag] = faultParts[tag] || [];
+      if (tag) faultParts[tag].push(m);
+      return m;
+    }
+
+    // ── 1. OUTER NACELLE / FAN COWL ───────────────────────────────────────────
+    // Main barrel (semi-transparent so inner parts show through)
+    const nacelleMat = new THREE.MeshStandardMaterial({
+      color: 0xb0bec8, metalness: 0.7, roughness: 0.3,
+      transparent: true, opacity: 0.28, side: THREE.DoubleSide,
+    });
+    const nacelleGeo = new THREE.CylinderGeometry(4.5, 4.2, 13, 48, 1, true);
+    const nacelle = new THREE.Mesh(nacelleGeo, nacelleMat);
+    nacelle.rotation.z = Math.PI / 2;
+    nacelle.position.x = -0.5;
+    engineGroup.add(nacelle);
+
+    // Front inlet lip ring
+    const lipGeo = new THREE.TorusGeometry(4.5, 0.28, 16, 48);
+    const lip = new THREE.Mesh(lipGeo, makeMetal(0xd0dce6, 0.82, 0.18));
+    lip.rotation.y = Math.PI / 2;
+    lip.position.x = -7;
+    engineGroup.add(lip);
+
+    // Rear nacelle section (solid)
+    const rearCasingGeo = new THREE.CylinderGeometry(4.2, 3.6, 3.5, 40, 1, true);
+    const rearCasing = new THREE.Mesh(rearCasingGeo, makeMetal(0x78909c, 0.7, 0.35));
+    rearCasing.rotation.z = Math.PI / 2;
+    rearCasing.position.x = 5.0;
+    engineGroup.add(rearCasing);
+
+    // ── 2. FAN DISK + BLADES (front face, 28 blades) ─────────────────────────
+    const fanGroup = new THREE.Group();
+    fanGroup.position.x = -6.8;
+    fanGroup.rotation.x = Math.PI / 2;
+
+    // Hub disc
+    const hubGeo = new THREE.CylinderGeometry(1.1, 1.1, 0.5, 32);
+    const hub = new THREE.Mesh(hubGeo, makeMetal(0x546e7a, 0.85, 0.15));
+    fanGroup.add(hub);
+
+    // Spinner nose cone
+    const spinnerGeo = new THREE.ConeGeometry(1.1, 2.2, 32);
+    const spinner = new THREE.Mesh(spinnerGeo, makeMetal(0x37474f, 0.9, 0.1));
+    spinner.position.y = -1.3;
+    fanGroup.add(spinner);
+
+    // 28 fan blades
+    const BLADE_COUNT = 28;
+    for (let i = 0; i < BLADE_COUNT; i++) {
+      const bladeGeo = new THREE.BoxGeometry(0.14, 3.5, 0.55);
+      const blade = new THREE.Mesh(bladeGeo, makeMetal(0xb0bec8, 0.85, 0.15));
+      const angle = (i / BLADE_COUNT) * Math.PI * 2;
+      blade.position.set(Math.cos(angle) * 2.4, Math.sin(angle) * 2.4, 0);
+      blade.rotation.z = angle + 0.3;
+      fanGroup.add(blade);
+      if (!faultParts['Fan']) faultParts['Fan'] = [];
+      faultParts['Fan'].push(blade);
+    }
+    engineGroup.add(fanGroup);
+
+    // ── 3. LOW PRESSURE COMPRESSOR (LPC) — 4 stage rings ─────────────────────
+    const lpcGroup = new THREE.Group();
+    lpcGroup.position.x = -4.5;
+    engineGroup.add(lpcGroup);
+
+    for (let s = 0; s < 4; s++) {
+      // Disk
+      const dGeo = new THREE.CylinderGeometry(2.9 - s * 0.08, 2.9 - s * 0.08, 0.22, 36);
+      const disk = new THREE.Mesh(dGeo, makeMetal(0x90a4ae, 0.78, 0.22));
+      disk.rotation.z = Math.PI / 2;
+      disk.position.x = s * 0.85;
+      lpcGroup.add(disk);
+
+      // Stator row (slightly larger, darker)
+      const sGeo = new THREE.CylinderGeometry(3.0 - s * 0.08, 3.0 - s * 0.08, 0.10, 36);
+      const stator = new THREE.Mesh(sGeo, makeMetal(0x607d8b, 0.72, 0.30));
+      stator.rotation.z = Math.PI / 2;
+      stator.position.x = s * 0.85 + 0.48;
+      lpcGroup.add(stator);
+
+      if (!faultParts['Compressor']) faultParts['Compressor'] = [];
+      faultParts['Compressor'].push(disk, stator);
+    }
+
+    // ── 4. HIGH PRESSURE COMPRESSOR (HPC) — 6 tighter stages ─────────────────
+    const hpcGroup = new THREE.Group();
+    hpcGroup.position.x = -1.0;
+    engineGroup.add(hpcGroup);
+
+    for (let s = 0; s < 6; s++) {
+      const r = 2.6 - s * 0.065;
+      const dGeo = new THREE.CylinderGeometry(r, r, 0.18, 36);
+      const disk = new THREE.Mesh(dGeo, makeMetal(0x78909c, 0.80, 0.20));
+      disk.rotation.z = Math.PI / 2;
+      disk.position.x = s * 0.62;
+      hpcGroup.add(disk);
+      if (!faultParts['Compressor']) faultParts['Compressor'] = [];
+      faultParts['Compressor'].push(disk);
+    }
+
+    // ── 5. COMBUSTOR SECTION ──────────────────────────────────────────────────
+    const combustorGroup = new THREE.Group();
+    combustorGroup.position.x = 2.85;
+    engineGroup.add(combustorGroup);
+
+    // Outer combustor case
+    const combOutGeo = new THREE.CylinderGeometry(2.55, 2.55, 2.8, 36);
+    const combOut = new THREE.Mesh(combOutGeo, makeMetal(0x546e7a, 0.68, 0.40));
+    combOut.rotation.z = Math.PI / 2;
+    combustorGroup.add(combOut);
+
+    // Inner liner
+    const combInGeo = new THREE.CylinderGeometry(1.6, 1.6, 2.6, 32);
+    const combIn = new THREE.Mesh(combInGeo, makeMetal(0x37474f, 0.70, 0.38));
+    combIn.rotation.z = Math.PI / 2;
+    combustorGroup.add(combIn);
+
+    // Fuel nozzle stubs (12 around the ring)
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const nozzleGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.7, 8);
+      const nozzle = new THREE.Mesh(nozzleGeo, makeMetal(0x90a4ae, 0.85, 0.15));
+      nozzle.rotation.z = Math.PI / 2;
+      nozzle.position.set(0, Math.sin(angle) * 2.1, Math.cos(angle) * 2.1);
+      combustorGroup.add(nozzle);
+    }
+
+    faultParts['Thermal'] = [combOut, combIn];
+
+    // ── 6. HIGH PRESSURE TURBINE (HPT) — 2 stages ────────────────────────────
+    const hptGroup = new THREE.Group();
+    hptGroup.position.x = 4.45;
+    engineGroup.add(hptGroup);
+
+    for (let s = 0; s < 2; s++) {
+      const r = 2.45 + s * 0.07;
+      const dGeo = new THREE.CylinderGeometry(r, r + 0.1, 0.30, 36);
+      const disk = new THREE.Mesh(dGeo, makeMetal(0x607d8b, 0.78, 0.25));
+      disk.rotation.z = Math.PI / 2;
+      disk.position.x = s * 0.75;
+      hptGroup.add(disk);
+
+      // Turbine blades (short radial fins)
+      for (let b = 0; b < 24; b++) {
+        const bGeo = new THREE.BoxGeometry(0.28, 0.72, 0.14);
+        const blade = new THREE.Mesh(bGeo, makeMetal(0x78909c, 0.82, 0.18));
+        const angle = (b / 24) * Math.PI * 2;
+        blade.position.set(s * 0.75, Math.sin(angle) * (r - 0.38), Math.cos(angle) * (r - 0.38));
+        blade.rotation.x = angle;
+        hptGroup.add(blade);
+      }
+      if (!faultParts['Turbine']) faultParts['Turbine'] = [];
+      faultParts['Turbine'].push(disk);
+    }
+
+    // ── 7. LOW PRESSURE TURBINE (LPT) — 4 stages ─────────────────────────────
+    const lptGroup = new THREE.Group();
+    lptGroup.position.x = 5.9;
+    engineGroup.add(lptGroup);
+
+    for (let s = 0; s < 4; s++) {
+      const r = 2.7 + s * 0.08;
+      const dGeo = new THREE.CylinderGeometry(r, r + 0.12, 0.28, 36);
+      const disk = new THREE.Mesh(dGeo, makeMetal(0x546e7a, 0.75, 0.30));
+      disk.rotation.z = Math.PI / 2;
+      disk.position.x = s * 0.90;
+      lptGroup.add(disk);
+      if (!faultParts['Turbine']) faultParts['Turbine'] = [];
+      faultParts['Turbine'].push(disk);
+    }
+
+    // ── 8. EXHAUST NOZZLE ─────────────────────────────────────────────────────
+    const nozzleGeo2 = new THREE.CylinderGeometry(2.1, 1.4, 4.5, 36, 1, true);
+    const nozzle2 = new THREE.Mesh(nozzleGeo2, makeMetal(0x4a5a68, 0.72, 0.35));
+    nozzle2.rotation.z = Math.PI / 2;
+    nozzle2.position.x = 10.2;
+    engineGroup.add(nozzle2);
+
+    // Nozzle tip cap
+    const tipGeo = new THREE.SphereGeometry(1.4, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    const tip = new THREE.Mesh(tipGeo, makeMetal(0x37474f, 0.82, 0.2));
+    tip.rotation.z = -Math.PI / 2;
+    tip.position.x = 12.45;
+    engineGroup.add(tip);
+
+    // ── 9. CENTRAL SHAFT ──────────────────────────────────────────────────────
+    const shaftGeo = new THREE.CylinderGeometry(0.42, 0.42, 22, 20);
+    const shaft = new THREE.Mesh(shaftGeo, makeMetal(0x90a4ae, 0.88, 0.12));
     shaft.rotation.z = Math.PI / 2;
+    shaft.position.x = 1.0;
     engineGroup.add(shaft);
 
-    // 3. Front Fan Blades (Stage 1) - Cyan Highlight
-    const fanGeo = new THREE.ConeGeometry(3.8, 1.5, 24);
-    const fanMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, metalness: 0.6, roughness: 0.3 });
-    const fan = new THREE.Mesh(fanGeo, fanMat);
-    fan.rotation.z = -Math.PI / 2;
-    fan.position.x = -6;
-    engineGroup.add(fan);
+    // ── 10. ACCESSORY GEARBOX (bottom bulge) ──────────────────────────────────
+    const gbGeo = new THREE.BoxGeometry(2.8, 1.0, 1.8);
+    const gb = new THREE.Mesh(gbGeo, makeMetal(0x546e7a, 0.72, 0.40));
+    gb.position.set(0.2, -3.6, 0);
+    engineGroup.add(gb);
+    faultParts['Mechanical'] = [gb];
 
-    // 4. FAULTY High Pressure Compressor (HPC Stage) - HIGHLIGHTED CRITICAL RED WITH GLOW
-    const hpcGeo = new THREE.CylinderGeometry(2.5, 3.2, 3.5, 24);
-    const hpcMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2, emissive: 0x7f0000, emissiveIntensity: 0.6 });
-    const hpc = new THREE.Mesh(hpcGeo, hpcMat);
-    hpc.rotation.z = Math.PI / 2;
-    hpc.position.x = -2.5;
-    engineGroup.add(hpc);
+    // Gearbox pipes
+    for (let i = -1; i <= 1; i += 2) {
+      const pipeGeo = new THREE.CylinderGeometry(0.14, 0.14, 2.2, 10);
+      const pipe = new THREE.Mesh(pipeGeo, makeMetal(0x607d8b, 0.80, 0.25));
+      pipe.position.set(0.2 + i * 0.7, -2.4, 0.3);
+      engineGroup.add(pipe);
+      faultParts['Mechanical'].push(pipe);
+    }
 
-    // 5. Combustor Chamber (Stage 3) - Amber Highlight
-    const combGeo = new THREE.CylinderGeometry(2.4, 2.4, 2.5, 24);
-    const combMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0x9a3412, emissiveIntensity: 0.4 });
-    const comb = new THREE.Mesh(combGeo, combMat);
-    comb.rotation.z = Math.PI / 2;
-    comb.position.x = 0.8;
-    engineGroup.add(comb);
+    // ── 11. EXTERNAL PIPES / BLEED DUCTS (top) ────────────────────────────────
+    const ductPositions = [[-2, 3.8, 1.2], [0.5, 3.6, 1.3], [2.8, 3.4, 1.1]];
+    ductPositions.forEach(([px, py, pz]) => {
+      const dg = new THREE.CylinderGeometry(0.12, 0.12, 2.5, 10);
+      const dp = new THREE.Mesh(dg, makeMetal(0x78909c, 0.78, 0.28));
+      dp.rotation.x = Math.PI / 7;
+      dp.position.set(px, py, pz);
+      engineGroup.add(dp);
+      if (!faultParts['Pressure']) faultParts['Pressure'] = [];
+      faultParts['Pressure'].push(dp);
+    });
 
-    // 6. High Pressure & Low Pressure Turbine (LPT/HPT Stage 4) - Blue Highlight
-    const turbGeo = new THREE.CylinderGeometry(3.0, 2.2, 3.5, 24);
-    const turbMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.7, roughness: 0.3 });
-    const turb = new THREE.Mesh(turbGeo, turbMat);
-    turb.rotation.z = Math.PI / 2;
-    turb.position.x = 4.2;
-    engineGroup.add(turb);
+    // Pressure sensor box
+    const sensorGeo = new THREE.BoxGeometry(0.8, 0.5, 0.5);
+    const sensor = new THREE.Mesh(sensorGeo, makeMetal(0x4a5a68, 0.75, 0.35));
+    sensor.position.set(-1.5, 3.9, 1.0);
+    engineGroup.add(sensor);
+    if (!faultParts['Pressure']) faultParts['Pressure'] = [];
+    faultParts['Pressure'].push(sensor);
 
-    // Slightly tilt engine group for 3D perspective
-    engineGroup.rotation.y = Math.PI / 6;
-    engineGroup.rotation.x = Math.PI / 12;
+    // ── 12. PYLON STRUT (top mount) ───────────────────────────────────────────
+    const strGeo = new THREE.BoxGeometry(5, 0.55, 0.55);
+    const strut = new THREE.Mesh(strGeo, makeMetal(0x607d8b, 0.72, 0.35));
+    strut.position.set(0, 4.7, 0);
+    engineGroup.add(strut);
+
+    // ── 13. STAGE RING FLANGES ────────────────────────────────────────────────
+    [-3.6, -0.9, 2.2, 4.5, 6.6].forEach(px => addRing(engineGroup, 4.25, 4.25, px, 0x607d8b));
+
     scene3d.add(engineGroup);
 
-    // Mouse Controls for 3D Rotation
+    // ── MOUSE / TOUCH CONTROLS ────────────────────────────────────────────────
     const dom = renderer3d.domElement;
     dom.addEventListener('mousedown', (e) => {
       isDragging = true;
       previousMousePosition = { x: e.clientX, y: e.clientY };
     });
-
     dom.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
-      const deltaMove = { x: e.clientX - previousMousePosition.x, y: e.clientY - previousMousePosition.y };
-      engineGroup.rotation.y += deltaMove.x * 0.01;
-      engineGroup.rotation.x += deltaMove.y * 0.01;
+      const dx = e.clientX - previousMousePosition.x;
+      const dy = e.clientY - previousMousePosition.y;
+      engineGroup.rotation.y += dx * 0.008;
+      engineGroup.rotation.x += dy * 0.008;
       previousMousePosition = { x: e.clientX, y: e.clientY };
     });
-
     window.addEventListener('mouseup', () => { isDragging = false; });
 
-    // Animation Render Loop
+    // Touch support
+    dom.addEventListener('touchstart', (e) => {
+      isDragging = true;
+      previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }, { passive: true });
+    dom.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+      const dx = e.touches[0].clientX - previousMousePosition.x;
+      const dy = e.touches[0].clientY - previousMousePosition.y;
+      engineGroup.rotation.y += dx * 0.008;
+      engineGroup.rotation.x += dy * 0.008;
+      previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }, { passive: true });
+    dom.addEventListener('touchend', () => { isDragging = false; });
+
+    // ── ANIMATION LOOP ────────────────────────────────────────────────────────
     function animate() {
       requestAnimationFrame(animate);
+      faultPulseTime += 0.04;
       if (!isDragging && engineGroup) {
-        engineGroup.rotation.y += 0.005; // Continuous subtle rotation
+        engineGroup.rotation.y += 0.004;
       }
+      // Pulse emissive intensity on fault parts
+      Object.entries(faultParts).forEach(([tag, meshes]) => {
+        meshes.forEach(m => {
+          if (m.userData.isFault) {
+            m.material.emissiveIntensity = 0.35 + 0.35 * Math.sin(faultPulseTime * 2.5);
+          }
+        });
+      });
       renderer3d.render(scene3d, camera3d);
     }
     animate();
+
+    // Resize observer
+    const resizeObserver = new ResizeObserver(() => {
+      if (!container || !renderer3d) return;
+      camera3d.aspect = container.clientWidth / container.clientHeight;
+      camera3d.updateProjectionMatrix();
+      renderer3d.setSize(container.clientWidth, container.clientHeight);
+    });
+    resizeObserver.observe(container);
   }
+
+  // ── FAULT HIGHLIGHTING — called by loadEngineInspector ─────────────────────
+  // subsystems: { Compressor: 54, Turbine: 88, Thermal: 91, Pressure: 76, Mechanical: 83 }
+  // Any subsystem score < 65 is highlighted as FAULT in red.
+  // Multiple faults supported. Healthy parts stay metallic grey.
+  window.highlight3DFault = (subsystems) => {
+    if (!faultParts || Object.keys(faultParts).length === 0) return;
+    const FAULT_THRESHOLD = 65;
+
+    // Reset all to healthy metallic
+    Object.values(faultParts).flat().forEach(m => {
+      m.material.color.setHex(0x8ea0ae);
+      m.material.emissive.setHex(0x000000);
+      m.material.emissiveIntensity = 0;
+      m.userData.isFault = false;
+    });
+
+    // Apply fault colour to each bad subsystem
+    Object.entries(subsystems || {}).forEach(([name, score]) => {
+      const parts = faultParts[name];
+      if (!parts) return;
+      if (score < FAULT_THRESHOLD) {
+        parts.forEach(m => {
+          m.material.color.setHex(0xef4444);
+          m.material.emissive.setHex(0x7f0000);
+          m.material.emissiveIntensity = 0.55;
+          m.userData.isFault = true;
+        });
+      } else if (score < 80) {
+        // Warning amber
+        parts.forEach(m => {
+          m.material.color.setHex(0xf59e0b);
+          m.material.emissive.setHex(0x7c3a00);
+          m.material.emissiveIntensity = 0.2;
+          m.userData.isFault = false;
+        });
+      }
+    });
+
+    // Fan sub-system maps to "Mechanical" since C-MAPSS doesn't expose Fan directly
+    // Update label text in DOM
+    const lowestEntry = Object.entries(subsystems || {}).sort((a, b) => a[1] - b[1])[0];
+    const faultLabel = document.getElementById('fault-label-3d');
+    if (faultLabel && lowestEntry) {
+      const score = lowestEntry[1];
+      const colour = score < FAULT_THRESHOLD ? '#ef4444' : score < 80 ? '#f59e0b' : '#22c55e';
+      faultLabel.textContent = score < 80
+        ? `⚠ ${lowestEntry[0]} Fault Detected (${score}%)`
+        : '✓ All Systems Nominal';
+      faultLabel.style.color = colour;
+    }
+  };
 
   window.rotate3DModel = (dir) => {
     if (!engineGroup) return;
@@ -294,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.reset3DModel = () => {
     if (!engineGroup) return;
-    engineGroup.rotation.set(Math.PI / 12, Math.PI / 6, 0);
+    engineGroup.rotation.set(Math.PI / 14, -Math.PI / 5, 0);
   };
 
   // 5. Load Monitored Fleet Data
@@ -393,6 +697,10 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
       `).join('');
+
+      // ── 3D Model: Highlight faulty subsystems live ──────────────────────────
+      // Small delay allows the 3D model to finish init if navigating to view-engines
+      setTimeout(() => window.highlight3DFault && window.highlight3DFault(subs), 200);
 
       // Load History Chart
       const histResp = await fetch(`/api/engine/${engId}/history?dataset=${state.currentDataset}`);
