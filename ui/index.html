@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AERO-HEALTH AI | Aircraft Engine Predictive Maintenance Dashboard</title>
+  <title>AERIS — Aircraft Engine Reliability & Intelligence System</title>
   
-  <!-- Google Fonts & Icons -->
+  <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Chart.js CDN -->
@@ -17,466 +17,439 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-container">
+
+  <!-- AUTH SCREEN (Hidden when logged in) -->
+  <div id="screen-auth" class="auth-page-container">
+    <div class="auth-hero-pane">
+      <div class="auth-brand-logo">
+        <i class="fa-solid fa-plane-up"></i>
+        <span>AERIS</span>
+      </div>
+      <div class="auth-tagline">Predict. Diagnose. Prevent.</div>
+      <p class="auth-description">
+        Aircraft Engine Reliability & Intelligence System — Next-generation aerospace predictive maintenance operations platform powering real-time fleet health, RUL forecasting, and fault diagnostics.
+      </p>
+    </div>
+    <div class="auth-card-pane">
+      <div class="auth-card">
+        <h2>Mission Control Sign In</h2>
+        <p>Access AERIS Fleet Intelligence Dashboard</p>
+        <form id="auth-form">
+          <div class="form-group">
+            <label for="auth-email">Email Address</label>
+            <input type="email" id="auth-email" class="form-input" value="engineer@aeris.aero" required>
+          </div>
+          <div class="form-group">
+            <label for="auth-password">Password</label>
+            <input type="password" id="auth-password" class="form-input" value="Engineer@123" required>
+          </div>
+          <button type="submit" class="btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Sign In to AERIS</button>
+        </form>
+
+        <div class="demo-login-shortcuts">
+          <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 0.2rem;">Quick Demo Profiles</div>
+          <button class="btn-demo-shortcut" onclick="quickLogin('admin@aeris.aero', 'Admin@123')">🔑 Admin (Full Control)</button>
+          <button class="btn-demo-shortcut" onclick="quickLogin('maint.mgr@aeris.aero', 'Maint@123')">🛠️ Maintenance Manager</button>
+          <button class="btn-demo-shortcut" onclick="quickLogin('engineer@aeris.aero', 'Engineer@123')">⚡ Flight Engineer (Default)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP PLATFORM WRAPPER -->
+  <div id="app-platform" class="app-wrapper" style="display: none;">
     
-    <!-- Top Navigation Header -->
-    <header class="navbar">
-      <div class="nav-brand">
-        <div class="brand-icon">
-          <i class="fa-solid fa-jet-fighter"></i>
-        </div>
-        <div class="brand-text">
-          <span class="brand-title">PARALLAX <span class="accent-text">AERO-HEALTH</span></span>
-          <span class="brand-subtitle">NASA C-MAPSS Fleet Predictive Maintenance</span>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar-nav">
+      <div class="sidebar-header">
+        <i class="fa-solid fa-plane-up"></i>
+        <div>
+          <span class="sidebar-title">AERIS</span>
+          <span class="sidebar-tagline">PREDICT. DIAGNOSE. PREVENT.</span>
         </div>
       </div>
 
-      <div class="nav-controls">
-        <div class="dataset-selector-wrapper">
-          <label for="dataset-select"><i class="fa-solid fa-database"></i> Dataset:</label>
-          <select id="dataset-select" class="custom-select">
-            <option value="FD001" selected>FD001 (Single Cond, HPC Fault)</option>
-            <option value="FD002">FD002 (6 Conds, HPC Fault)</option>
-            <option value="FD003">FD003 (Single Cond, HPC + Fan Fault)</option>
-            <option value="FD004">FD004 (6 Conds, HPC + Fan Fault)</option>
-          </select>
-        </div>
+      <nav class="sidebar-menu">
+        <div class="menu-category">Command Center</div>
+        <a class="nav-link active" data-view="view-overview"><i class="fa-solid fa-chart-pie"></i> Fleet Overview</a>
+        <a class="nav-link" data-view="view-aircraft"><i class="fa-solid fa-plane"></i> Aircraft Registry</a>
+        <a class="nav-link" data-view="view-engines"><i class="fa-solid fa-gear"></i> Engine Registry</a>
 
-        <div class="system-status-pill">
-          <span class="status-indicator-dot pulse"></span>
-          <span id="api-status-text">Backend Online</span>
+        <div class="menu-category">Monitoring & Replay</div>
+        <a class="nav-link" data-view="view-telemetry"><i class="fa-solid fa-wave-square"></i> Live Telemetry</a>
+        <a class="nav-link" data-view="view-replay"><i class="fa-solid fa-rotate-left"></i> C-MAPSS Replay Mode</a>
+        <a class="nav-link" data-view="view-diagnostics"><i class="fa-solid fa-microchip"></i> Fault Diagnostics</a>
+        <a class="nav-link" data-view="view-alerts"><i class="fa-solid fa-triangle-exclamation"></i> Alert Center</a>
+
+        <div class="menu-category">Maintenance</div>
+        <a class="nav-link" data-view="view-maintenance"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance Control</a>
+        <a class="nav-link" data-view="view-simulator"><i class="fa-solid fa-sliders"></i> What-If Simulator</a>
+
+        <div class="menu-category">Intelligence</div>
+        <a class="nav-link" data-view="view-analytics"><i class="fa-solid fa-chart-line"></i> Model Analytics</a>
+        <a class="nav-link" data-view="view-reports"><i class="fa-solid fa-file-invoice"></i> Reports & Export</a>
+
+        <div class="menu-category">System</div>
+        <a class="nav-link" data-view="view-profile"><i class="fa-solid fa-user-gear"></i> User Profile</a>
+        <a class="nav-link" id="nav-admin-link" data-view="view-admin"><i class="fa-solid fa-user-shield"></i> Admin Panel</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar" id="user-avatar-initials">AV</div>
+          <div class="user-info">
+            <span class="user-name" id="user-display-name">Dr. Alex Vance</span>
+            <span class="user-role" id="user-display-role">ENGINEER</span>
+          </div>
         </div>
+        <button class="btn-demo-shortcut" onclick="logout()" title="Sign Out"><i class="fa-solid fa-right-from-bracket"></i></button>
       </div>
-    </header>
+    </aside>
 
-    <!-- Main Content Area -->
-    <main class="dashboard-content">
+    <!-- Main Viewport -->
+    <div class="main-viewport">
       
-      <!-- Top Fleet KPI Cards -->
-      <section class="kpi-grid">
-        <div class="kpi-card" id="kpi-total-engines">
-          <div class="kpi-icon-wrapper blue">
-            <i class="fa-solid fa-plane-engines"></i>
-          </div>
-          <div class="kpi-details">
-            <span class="kpi-label">Monitored Fleet</span>
-            <div class="kpi-value-row">
-              <span class="kpi-value" id="val-total-engines">--</span>
-              <span class="kpi-unit">Engines</span>
-            </div>
-            <span class="kpi-subtext" id="sub-fleet-dataset">C-MAPSS FD001</span>
-          </div>
+      <!-- Top Sticky Navbar -->
+      <header class="top-header">
+        <div class="header-search-trigger" onclick="toggleCommandPalette()">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>Search Aircraft, Engine ID, WO...</span>
+          <kbd>Ctrl + K</kbd>
         </div>
 
-        <div class="kpi-card" id="kpi-healthy">
-          <div class="kpi-icon-wrapper green">
-            <i class="fa-solid fa-shield-halved"></i>
+        <div class="header-actions">
+          <div class="dataset-select-wrap">
+            <i class="fa-solid fa-database"></i>
+            <select id="dataset-select" class="aeris-select">
+              <option value="FD001" selected>FD001 (Single Cond, HPC Fault)</option>
+              <option value="FD002">FD002 (6 Conds, HPC Fault)</option>
+              <option value="FD003">FD003 (Single Cond, HPC + Fan Fault)</option>
+              <option value="FD004">FD004 (6 Conds, HPC + Fan Fault)</option>
+            </select>
           </div>
-          <div class="kpi-details">
-            <span class="kpi-label">Healthy & Operational</span>
-            <div class="kpi-value-row">
-              <span class="kpi-value color-healthy" id="val-healthy-count">--</span>
-              <span class="kpi-unit" id="val-healthy-pct">(--%)</span>
-            </div>
-            <span class="kpi-subtext">Nominal baseline envelope</span>
+
+          <div class="status-pill">
+            <span class="dot-pulse"></span>
+            <span id="api-status-text">Backend Online</span>
           </div>
         </div>
+      </header>
 
-        <div class="kpi-card" id="kpi-monitor">
-          <div class="kpi-icon-wrapper yellow">
-            <i class="fa-solid fa-eye"></i>
-          </div>
-          <div class="kpi-details">
-            <span class="kpi-label">Telemetry Monitoring</span>
-            <div class="kpi-value-row">
-              <span class="kpi-value color-monitor" id="val-monitor-count">--</span>
-              <span class="kpi-unit" id="val-monitor-pct">(--%)</span>
+      <div class="content-body">
+
+        <!-- VIEW 1: FLEET OVERVIEW -->
+        <section id="view-overview" class="view-pane active">
+          <div class="kpi-row">
+            <div class="kpi-panel">
+              <div class="kpi-icon blue"><i class="fa-solid fa-plane"></i></div>
+              <div class="kpi-info">
+                <span class="kpi-title">Monitored Fleet</span>
+                <span class="kpi-val" id="val-total-engines">--</span>
+                <span class="kpi-sub" id="sub-fleet-dataset">C-MAPSS FD001</span>
+              </div>
             </div>
-            <span class="kpi-subtext">Mild drift / mid-life wear</span>
-          </div>
-        </div>
-
-        <div class="kpi-card" id="kpi-maintenance">
-          <div class="kpi-icon-wrapper orange">
-            <i class="fa-solid fa-wrench"></i>
-          </div>
-          <div class="kpi-details">
-            <span class="kpi-label">Maintenance Required</span>
-            <div class="kpi-value-row">
-              <span class="kpi-value color-maintenance" id="val-maint-count">--</span>
-              <span class="kpi-unit" id="val-maint-pct">(--%)</span>
+            <div class="kpi-panel">
+              <div class="kpi-icon green"><i class="fa-solid fa-shield-halved"></i></div>
+              <div class="kpi-info">
+                <span class="kpi-title">Healthy</span>
+                <span class="kpi-val color-healthy" id="val-healthy-count">--</span>
+                <span class="kpi-sub" id="val-healthy-pct">(--%)</span>
+              </div>
             </div>
-            <span class="kpi-subtext">Borescope inspection window</span>
-          </div>
-        </div>
-
-        <div class="kpi-card" id="kpi-critical">
-          <div class="kpi-icon-wrapper red">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-          </div>
-          <div class="kpi-details">
-            <span class="kpi-label">Critical Grounding</span>
-            <div class="kpi-value-row">
-              <span class="kpi-value color-critical" id="val-critical-count">--</span>
-              <span class="kpi-unit" id="val-critical-pct">(--%)</span>
+            <div class="kpi-panel">
+              <div class="kpi-icon yellow"><i class="fa-solid fa-eye"></i></div>
+              <div class="kpi-info">
+                <span class="kpi-title">Monitor</span>
+                <span class="kpi-val color-monitor" id="val-monitor-count">--</span>
+                <span class="kpi-sub" id="val-monitor-pct">(--%)</span>
+              </div>
             </div>
-            <span class="kpi-subtext">Immediate depot overhaul</span>
+            <div class="kpi-panel">
+              <div class="kpi-icon orange"><i class="fa-solid fa-wrench"></i></div>
+              <div class="kpi-info">
+                <span class="kpi-title">Maintenance Req.</span>
+                <span class="kpi-val color-maint" id="val-maint-count">--</span>
+                <span class="kpi-sub" id="val-maint-pct">(--%)</span>
+              </div>
+            </div>
+            <div class="kpi-panel">
+              <div class="kpi-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+              <div class="kpi-info">
+                <span class="kpi-title">Critical</span>
+                <span class="kpi-val color-critical" id="val-critical-count">--</span>
+                <span class="kpi-sub" id="val-critical-pct">(--%)</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <!-- Interactive Tab Controls -->
-      <div class="tab-navigation">
-        <button class="tab-btn active" data-tab="tab-fleet"><i class="fa-solid fa-layer-group"></i> Fleet Overview & Diagnostics</button>
-        <button class="tab-btn" data-tab="tab-simulator"><i class="fa-solid fa-sliders"></i> Real-Time Telemetry Simulator</button>
-        <button class="tab-btn" data-tab="tab-architecture"><i class="fa-solid fa-diagram-project"></i> ML Architecture & Methodology</button>
-      </div>
-
-      <!-- TAB 1: FLEET OVERVIEW & DIAGNOSTICS -->
-      <section id="tab-fleet" class="tab-pane active">
-        <div class="grid-2col">
-          
-          <!-- Left Column: Fleet Table & Filters -->
-          <div class="panel fleet-table-panel">
+          <div class="panel">
             <div class="panel-header">
-              <div class="panel-title">
-                <i class="fa-solid fa-list-check"></i>
-                <span>Engine Fleet Telemetry Table</span>
-              </div>
-              <div class="table-controls">
-                <input type="text" id="engine-search-input" placeholder="Search Engine #..." class="search-input">
-                <select id="status-filter" class="filter-select">
-                  <option value="ALL">All Health States</option>
-                  <option value="CRITICAL">Critical Only</option>
-                  <option value="MAINTENANCE REQUIRED">Maintenance Required</option>
-                  <option value="MONITOR">Monitor Only</option>
-                  <option value="HEALTHY">Healthy Only</option>
-                </select>
-              </div>
+              <div class="panel-title"><i class="fa-solid fa-layer-group"></i> Monitored Turbofan Engine Fleet Telemetry Table</div>
+              <input type="text" id="engine-search-input" placeholder="Filter Engine #..." class="form-input" style="width: 220px;">
             </div>
-
-            <div class="table-responsive">
-              <table class="data-table" id="fleet-table">
+            <div class="aeris-table-wrap">
+              <table class="aeris-table">
                 <thead>
                   <tr>
-                    <th>Engine #</th>
-                    <th>Last Cycle</th>
+                    <th>Engine Code</th>
+                    <th>Aircraft</th>
+                    <th>Cycle</th>
                     <th>Predicted RUL</th>
                     <th>Anomaly Score</th>
                     <th>Health Status</th>
-                    <th>Risk Rating</th>
+                    <th>Priority Score</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody id="fleet-table-body">
-                  <tr>
-                    <td colspan="7" class="loading-cell"><i class="fa-solid fa-spinner fa-spin"></i> Loading fleet telemetry data...</td>
-                  </tr>
+                  <tr><td colspan="8" class="mono">Loading telemetry...</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
+        </section>
 
-          <!-- Right Column: Selected Engine Diagnostic Inspector -->
-          <div class="panel engine-inspector-panel" id="engine-inspector">
+        <!-- VIEW 2: AIRCRAFT REGISTRY -->
+        <section id="view-aircraft" class="view-pane">
+          <div class="panel">
             <div class="panel-header">
-              <div class="panel-title">
-                <i class="fa-solid fa-microchip"></i>
-                <span>Engine Diagnostic Inspector: <span id="inspector-engine-title">Engine #1</span></span>
-              </div>
-              <span class="badge" id="inspector-health-badge">HEALTHY</span>
+              <div class="panel-title"><i class="fa-solid fa-plane"></i> Aircraft Registry <span class="demo-tag">DEMO / SIMULATED FLEET</span></div>
             </div>
-
-            <div class="inspector-body">
-              <!-- Key Metrics Grid -->
-              <div class="metrics-grid">
-                <div class="metric-box">
-                  <span class="metric-title"><i class="fa-regular fa-clock"></i> Predicted RUL</span>
-                  <div class="metric-number-row">
-                    <span class="metric-number color-blue" id="insp-rul">--</span>
-                    <span class="metric-unit">Cycles</span>
-                  </div>
-                  <span class="metric-hint" id="insp-actual-rul">True RUL: --</span>
-                </div>
-
-                <div class="metric-box">
-                  <span class="metric-title"><i class="fa-solid fa-wave-square"></i> Anomaly Score</span>
-                  <div class="metric-number-row">
-                    <span class="metric-number" id="insp-anom-score">--</span>
-                    <span class="metric-unit">/ 100</span>
-                  </div>
-                  <span class="metric-hint" id="insp-anom-status">Status: Normal</span>
-                </div>
-
-                <div class="metric-box">
-                  <span class="metric-title"><i class="fa-solid fa-heart-pulse"></i> Composite Health</span>
-                  <div class="metric-number-row">
-                    <span class="metric-number" id="insp-composite">--</span>
-                    <span class="metric-unit">%</span>
-                  </div>
-                  <span class="metric-hint" id="insp-risk">Risk: Low</span>
-                </div>
-
-                <div class="metric-box">
-                  <span class="metric-title"><i class="fa-solid fa-hourglass-half"></i> Urgency Window</span>
-                  <div class="metric-number-row">
-                    <span class="metric-number" id="insp-urgency">--</span>
-                    <span class="metric-unit">Cycles</span>
-                  </div>
-                  <span class="metric-hint">Until compulsory service</span>
-                </div>
-              </div>
-
-              <!-- Maintenance Recommendation Banner -->
-              <div class="advisory-card" id="advisory-card">
-                <div class="advisory-icon"><i class="fa-solid fa-bell"></i></div>
-                <div class="advisory-content">
-                  <span class="advisory-label">Actionable Maintenance Recommendation</span>
-                  <h4 class="advisory-heading" id="insp-recommendation">Loading advisory...</h4>
-                  <p class="advisory-reason" id="insp-reason">Loading decision rationale...</p>
-                </div>
-              </div>
-
-              <!-- Implicated Subsystems & Specific Engineering Tasks -->
-              <div class="diagnostic-breakdown">
-                <div class="subsystem-box">
-                  <span class="section-title"><i class="fa-solid fa-gears"></i> Implicated Turbofan Subsystems</span>
-                  <div class="tags-container" id="insp-components-tags">
-                    <span class="component-tag">High-Pressure Compressor (HPC)</span>
-                  </div>
-                </div>
-
-                <div class="tasks-box">
-                  <span class="section-title"><i class="fa-solid fa-list-check"></i> Targeted Engineering Action Items</span>
-                  <p class="task-description" id="insp-tasks">Loading specific inspection tasks...</p>
-                </div>
-
-                <div class="sensors-box">
-                  <span class="section-title"><i class="fa-solid fa-chart-line"></i> Top Contributing Abnormal Sensors</span>
-                  <div class="sensors-list" id="insp-sensors-list">
-                    <span class="sensor-chip">sensor_11 (+3.42σ, High deviation)</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Historical Trajectory Chart -->
-              <div class="chart-container-card">
-                <span class="section-title"><i class="fa-solid fa-chart-area"></i> Lifecycle Degradation Trajectory (Cycles 1 to Latest)</span>
-                <div class="chart-wrapper">
-                  <canvas id="engine-history-chart"></canvas>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- TAB 2: REAL-TIME TELEMETRY SIMULATOR -->
-      <section id="tab-simulator" class="tab-pane">
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">
-              <i class="fa-solid fa-sliders"></i>
-              <span>Live Engine Health & Maintenance Decision Simulator</span>
-            </div>
-            <span class="subtext">Simulate instantaneous aircraft sensor telemetry and evaluate maintenance decisions</span>
-          </div>
-
-          <div class="simulator-grid">
-            <div class="sim-controls-pane">
-              <h4 class="pane-subtitle"><i class="fa-solid fa-wrench"></i> Simulator Input Parameters</h4>
-              
-              <div class="preset-buttons-row">
-                <button class="preset-btn" id="preset-healthy"><i class="fa-solid fa-shield-halved"></i> Healthy Preset</button>
-                <button class="preset-btn" id="preset-monitor"><i class="fa-solid fa-eye"></i> Monitor Preset</button>
-                <button class="preset-btn" id="preset-maint"><i class="fa-solid fa-wrench"></i> Maintenance Req Preset</button>
-                <button class="preset-btn" id="preset-critical"><i class="fa-solid fa-triangle-exclamation"></i> Critical Failure Preset</button>
-              </div>
-
-              <div class="input-group">
-                <label for="sim-engine-id">Engine ID:</label>
-                <input type="number" id="sim-engine-id" value="42" class="custom-input">
-              </div>
-
-              <div class="input-group">
-                <label for="sim-cycle">Current Operating Cycle:</label>
-                <input type="number" id="sim-cycle" value="165" class="custom-input">
-              </div>
-
-              <div class="input-group">
-                <div class="slider-header">
-                  <label for="sim-rul">Predicted Remaining Useful Life (RUL):</label>
-                  <span class="slider-val" id="sim-rul-val">35 cycles</span>
-                </div>
-                <input type="range" id="sim-rul" min="1" max="130" value="35" class="custom-slider">
-              </div>
-
-              <div class="input-group">
-                <div class="slider-header">
-                  <label for="sim-anom">Calibrated Anomaly Score (0–100):</label>
-                  <span class="slider-val" id="sim-anom-val">72.5</span>
-                </div>
-                <input type="range" id="sim-anom" min="0" max="100" value="72" class="custom-slider">
-              </div>
-
-              <div class="input-group">
-                <label for="sim-sensors">Abnormal Sensors Telemetry String:</label>
-                <input type="text" id="sim-sensors" value="sensor_11 (+3.82σ, High deviation) | sensor_4 (+2.75σ, High deviation)" class="custom-input">
-              </div>
-
-              <button class="btn-primary" id="btn-run-sim"><i class="fa-solid fa-bolt"></i> Evaluate Engine Health & Advisory</button>
-            </div>
-
-            <div class="sim-result-pane">
-              <h4 class="pane-subtitle"><i class="fa-solid fa-square-poll-vertical"></i> Multi-Factor Inference Result</h4>
-              
-              <div class="sim-result-card" id="sim-result-card">
-                <div class="sim-status-header">
-                  <span class="status-pill-large" id="sim-res-status">MAINTENANCE REQUIRED</span>
-                  <span class="risk-pill" id="sim-res-risk">Risk: HIGH</span>
-                </div>
-
-                <div class="sim-kpi-row">
-                  <div class="sim-kpi">
-                    <span class="kpi-label">Composite Health Index</span>
-                    <span class="kpi-val" id="sim-res-composite">38.4%</span>
-                  </div>
-                  <div class="sim-kpi">
-                    <span class="kpi-label">Urgency Window</span>
-                    <span class="kpi-val" id="sim-res-urgency">15 Cycles</span>
-                  </div>
-                </div>
-
-                <div class="sim-section">
-                  <span class="sim-label">Decision Reason:</span>
-                  <p class="sim-text" id="sim-res-reason">Evaluating...</p>
-                </div>
-
-                <div class="sim-section">
-                  <span class="sim-label">Primary Maintenance Recommendation:</span>
-                  <p class="sim-text-bold" id="sim-res-rec">Evaluating...</p>
-                </div>
-
-                <div class="sim-section">
-                  <span class="sim-label">Targeted Engineering Actions:</span>
-                  <p class="sim-text-actions" id="sim-res-actions">Evaluating...</p>
-                </div>
-
-                <div class="sim-section">
-                  <span class="sim-label">Implicated Turbofan Components:</span>
-                  <p class="sim-text-components" id="sim-res-components">Evaluating...</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB 3: ML ARCHITECTURE & METHODOLOGY -->
-      <section id="tab-architecture" class="tab-pane">
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">
-              <i class="fa-solid fa-diagram-project"></i>
-              <span>NASA C-MAPSS End-to-End System Architecture</span>
-            </div>
-          </div>
-
-          <div class="arch-container">
-            <div class="pipeline-flow-diagram">
-              <div class="flow-card p1">
-                <div class="flow-badge">Person 1</div>
-                <h4>Data Engineering</h4>
-                <p>NASA C-MAPSS Telemetry Preprocessing, MinMax Normalisation, Rolling Window Features (mean, std, lag, diff).</p>
-              </div>
-              
-              <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-
-              <div class="flow-parallel-col">
-                <div class="flow-card p2">
-                  <div class="flow-badge">Person 2</div>
-                  <h4>RUL & Health Prediction</h4>
-                  <p>Random Forest & XGBoost Regressors predicting Remaining Useful Life (RUL) and RUL-based Health Score.</p>
-                </div>
-
-                <div class="flow-card p3">
-                  <div class="flow-badge">Person 3</div>
-                  <h4>Anomaly & Fault Detection</h4>
-                  <p>Isolation Forest learning nominal baseline envelope, generating 0–100 Anomaly Scores & Sensor z-scores.</p>
-                </div>
-              </div>
-
-              <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-
-              <div class="flow-card p4">
-                <div class="flow-badge">Person 4</div>
-                <h4>Integration & Maintenance Advisor</h4>
-                <p>Multi-Factor Health Engine (HEALTHY, MONITOR, MAINT REQ, CRITICAL), Explainable Reasons & REST API.</p>
-              </div>
-            </div>
-
-            <div class="matrix-card">
-              <h3>Multi-Factor Decision Matrix</h3>
-              <table class="matrix-table">
+            <div class="aeris-table-wrap">
+              <table class="aeris-table">
                 <thead>
                   <tr>
-                    <th>Health Category</th>
-                    <th>RUL Threshold</th>
-                    <th>Anomaly Score</th>
-                    <th>Operational Directive</th>
-                    <th>Urgency Limit</th>
+                    <th>Aircraft ID</th>
+                    <th>Registration</th>
+                    <th>Model</th>
+                    <th>Operator</th>
+                    <th>Base Airport</th>
+                    <th>Flight Hours</th>
+                    <th>Flight Cycles</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr class="row-healthy">
-                    <td><span class="badge badge-healthy">HEALTHY</span></td>
-                    <td>RUL &ge; 75 cycles</td>
-                    <td>Score &lt; 45 (Nominal)</td>
-                    <td>Continue normal flight operations & routine line service</td>
-                    <td>Routine Service</td>
-                  </tr>
-                  <tr class="row-monitor">
-                    <td><span class="badge badge-monitor">MONITOR</span></td>
-                    <td>45 &le; RUL &lt; 75</td>
-                    <td>45 &le; Score &lt; 65 (Mild Drift)</td>
-                    <td>Approved for line service with heightened telemetry & vibration sampling</td>
-                    <td>30 Cycles</td>
-                  </tr>
-                  <tr class="row-maintenance">
-                    <td><span class="badge badge-maint">MAINTENANCE REQUIRED</span></td>
-                    <td>20 &le; RUL &lt; 45</td>
-                    <td>65 &le; Score &lt; 80 (Moderate)</td>
-                    <td>Schedule priority borescope inspection at next ground maintenance window</td>
-                    <td>15 Cycles</td>
-                  </tr>
-                  <tr class="row-critical">
-                    <td><span class="badge badge-critical">CRITICAL</span></td>
-                    <td>RUL &lt; 20 cycles</td>
-                    <td>Score &ge; 80 (Severe)</td>
-                    <td><strong>IMMEDIATE ACTION:</strong> Ground engine for depot teardown and overhaul</td>
-                    <td>0 Cycles (Immediate)</td>
-                  </tr>
+                <tbody id="aircraft-table-body">
+                  <tr><td colspan="8" class="mono">Loading aircraft registry...</td></tr>
                 </tbody>
               </table>
             </div>
+          </div>
+        </section>
 
-            <div class="disclaimer-banner">
-              <i class="fa-solid fa-circle-info"></i>
-              <span><strong>Notice:</strong> This predictive health assessment and maintenance recommendation system is a research decision-support prototype developed on NASA C-MAPSS turbofan simulation data. It does not replace or supersede certified FAA/EASA airworthiness directives, engine shop manuals (ESM), or approved airline standard operating procedures.</span>
+        <!-- VIEW 3: ENGINE REGISTRY & DETAIL -->
+        <section id="view-engines" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-gear"></i> Engine Diagnostic Inspector: <span id="insp-title" class="mono">Engine AE-0001-L</span></div>
+              <span class="badge-pill healthy" id="insp-badge">HEALTHY</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+              <div class="kpi-panel">
+                <div class="kpi-info">
+                  <span class="kpi-title">Predicted RUL</span>
+                  <span class="kpi-val color-blue" id="insp-rul">--</span>
+                  <span class="kpi-sub" id="insp-range">Expected Range: --</span>
+                </div>
+              </div>
+              <div class="kpi-panel">
+                <div class="kpi-info">
+                  <span class="kpi-title">Anomaly Score</span>
+                  <span class="kpi-val" id="insp-anom">--</span>
+                  <span class="kpi-sub" id="insp-anom-status">Nominal Baseline</span>
+                </div>
+              </div>
+              <div class="kpi-panel">
+                <div class="kpi-info">
+                  <span class="kpi-title">Composite Health</span>
+                  <span class="kpi-val color-healthy" id="insp-comp">--</span>
+                  <span class="kpi-sub">Weighted Index (0-100%)</span>
+                </div>
+              </div>
+              <div class="kpi-panel">
+                <div class="kpi-info">
+                  <span class="kpi-title">Model Confidence</span>
+                  <span class="kpi-val color-cyan" id="insp-conf">--%</span>
+                  <span class="kpi-sub">Statistical Certainty</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+              <div>
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem;"><i class="fa-solid fa-chart-line"></i> Cycle Health Trajectory</div>
+                <canvas id="engine-history-chart" style="height: 260px; width: 100%;"></canvas>
+              </div>
+              <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.75rem;"><i class="fa-solid fa-cubes"></i> Subsystem Degradation</div>
+                <div id="subsystems-bars" style="display: flex; flex-direction: column; gap: 0.65rem;">
+                  <!-- Subsystem bars injected via JS -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Turbofan Schematic Render & AI Intelligence Explanation -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+              <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-default); text-align: center;">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.75rem; text-align: left;"><i class="fa-solid fa-jet-fighter"></i> Subsystem Structural Cutaway</div>
+                <img src="aeris_turbofan_bg.jpg" alt="Turbofan Cutaway" style="width: 100%; max-height: 200px; object-fit: contain; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+              </div>
+              <div style="background: rgba(168, 85, 247, 0.08); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid rgba(168, 85, 247, 0.3);">
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-violet); margin-bottom: 0.5rem;"><i class="fa-solid fa-brain"></i> AERIS INTELLIGENCE — AI Diagnostic Summary</div>
+                <p id="insp-ai-reason" style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.6;">
+                  Engine telemetry demonstrates nominal operational baseline across all compressor and turbine stages. No active fault signature or anomalous drift detected.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-    </main>
+        <!-- VIEW 4: LIVE TELEMETRY & REPLAY -->
+        <section id="view-replay" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-rotate-left"></i> C-MAPSS Replay Mode <span class="demo-tag">REAL C-MAPSS RUN-TO-FAILURE TELEMETRY</span></div>
+            </div>
+            
+            <div class="replay-bar">
+              <button id="btn-replay-play" class="replay-btn"><i class="fa-solid fa-play"></i> Play</button>
+              <button id="btn-replay-pause" class="replay-btn"><i class="fa-solid fa-pause"></i> Pause</button>
+              <button id="btn-replay-reset" class="replay-btn"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+              <span class="mono" style="font-size: 0.85rem;">Cycle: <span id="replay-cycle-num">1</span> / <span id="replay-total-cycles">192</span></span>
+              <input type="range" id="replay-slider" class="replay-slider" min="1" max="192" value="1">
+            </div>
 
-    <!-- Footer -->
-    <footer class="app-footer">
-      <span>PS-S02 Aircraft Engine Predictive Maintenance System &bull; NASA C-MAPSS FD001–FD004</span>
-      <span>Engine Health Decision Support &bull; Backend REST API at <code>http://localhost:8000/api</code></span>
-    </footer>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+              <div class="kpi-panel">
+                <div class="kpi-info">
+                  <span class="kpi-title">Current Health State</span>
+                  <span class="badge-pill healthy" id="replay-status-badge" style="font-size: 1rem; margin-top: 0.5rem;">HEALTHY</span>
+                </div>
+              </div>
+              <div class="kpi-panel">
+                <div class="kpi-info">
+                  <span class="kpi-title">Predicted RUL</span>
+                  <span class="kpi-val color-blue" id="replay-rul-val">125 cycles</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 5: WHAT-IF SIMULATOR -->
+        <section id="view-simulator" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-sliders"></i> Real-Time What-If Telemetry Simulator <span class="demo-tag">SIMULATED SCENARIO</span></div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+              <div>
+                <div class="form-group">
+                  <label>Simulated RUL (Cycles)</label>
+                  <input type="range" id="sim-rul" min="0" max="125" value="35" class="form-input" oninput="document.getElementById('sim-rul-txt').textContent=this.value + ' cycles'">
+                  <span id="sim-rul-txt" class="mono">35 cycles</span>
+                </div>
+                <div class="form-group">
+                  <label>Simulated Anomaly Score (0-100)</label>
+                  <input type="range" id="sim-anom" min="0" max="100" value="72" class="form-input" oninput="document.getElementById('sim-anom-txt').textContent=this.value">
+                  <span id="sim-anom-txt" class="mono">72</span>
+                </div>
+                <button onclick="runSimulator()" class="btn-primary"><i class="fa-solid fa-bolt"></i> Run What-If Simulation</button>
+              </div>
+
+              <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.75rem;"><i class="fa-solid fa-microchip"></i> Simulation Outcome</div>
+                <div id="sim-outcome-content" class="mono" style="font-size: 0.85rem; line-height: 1.6;">
+                  Run simulation to evaluate Before vs. After impact on Health Index, Risk Rating, and Maintenance Window.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 6: MAINTENANCE CONTROL -->
+        <section id="view-maintenance" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance Control Center & Work Orders</div>
+            </div>
+            <div class="aeris-table-wrap">
+              <table class="aeris-table">
+                <thead>
+                  <tr>
+                    <th>WO ID</th>
+                    <th>Aircraft</th>
+                    <th>Engine Code</th>
+                    <th>Issue Summary</th>
+                    <th>Priority</th>
+                    <th>Recommended Action</th>
+                    <th>Urgency Window</th>
+                    <th>Assigned Engineer</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="maintenance-table-body">
+                  <tr><td colspan="9" class="mono">Loading work orders...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 7: ALERT CENTER -->
+        <section id="view-alerts" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-triangle-exclamation"></i> Alert Center & Safety Notifications</div>
+            </div>
+            <div id="alerts-container">
+              <!-- Alerts populated via JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 8: REPORTS -->
+        <section id="view-reports" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-file-invoice"></i> Aerospace Health Reports & Data Export</div>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Export official fleet health assessments, model predictions, and maintenance work orders in CSV/JSON format for reporting.</p>
+            <a href="/api/reports/download?type=fleet&format=csv" class="btn-primary" style="display: inline-block; width: auto; text-decoration: none;"><i class="fa-solid fa-download"></i> Download Complete Fleet CSV Report</a>
+          </div>
+        </section>
+
+        <!-- VIEW 9: ADMIN PANEL -->
+        <section id="view-admin" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-user-shield"></i> AERIS Administration & Audit Control</div>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Role-Based User Management and System Audit Logs.</p>
+            <div class="mono" style="background: var(--bg-card); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+              [AUDIT LOG] System initialized and seeded with 20 demo aircraft profiles and 100 C-MAPSS engines.
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- COMMAND PALETTE MODAL (Ctrl + K) -->
+  <div id="cmd-palette" class="cmd-modal-overlay">
+    <div class="cmd-modal-box">
+      <input type="text" id="cmd-input" class="cmd-search-input" placeholder="Type a command or page name..." autofocus>
+      <div class="cmd-results-list" id="cmd-results">
+        <div class="cmd-item" onclick="navigateTo('view-overview')"><i class="fa-solid fa-chart-pie"></i> Go to Fleet Overview</div>
+        <div class="cmd-item" onclick="navigateTo('view-aircraft')"><i class="fa-solid fa-plane"></i> Go to Aircraft Registry</div>
+        <div class="cmd-item" onclick="navigateTo('view-engines')"><i class="fa-solid fa-gear"></i> Go to Engine Diagnostic Inspector</div>
+        <div class="cmd-item" onclick="navigateTo('view-replay')"><i class="fa-solid fa-rotate-left"></i> Start C-MAPSS Replay Mode</div>
+        <div class="cmd-item" onclick="navigateTo('view-maintenance')"><i class="fa-solid fa-screwdriver-wrench"></i> Open Maintenance Control</div>
+        <div class="cmd-item" onclick="navigateTo('view-simulator')"><i class="fa-solid fa-sliders"></i> Open What-If Simulator</div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

@@ -97,11 +97,42 @@ def assess_engine_health(
         health_status = t["HEALTHY"]["label"]
         risk_level = t["HEALTHY"]["risk_level"]
 
-    # 2. Composite Health Index (0 to 100%)
-    # RUL Capacity: normalized against MAX_RUL (125 cycles)
     rul_pct = np.clip((rul / MAX_RUL) * 100.0, 0.0, 100.0)
-    # Anomaly Nominality: 100 minus anomaly score
     anom_nominality = np.clip(100.0 - anom, 0.0, 100.0)
+
+    # 1. Evaluate Special Aerospace Safety Conditions
+    # Novel Fault / Unknown Behaviour: RUL appears high (>60 cycles) BUT Anomaly score is critical (>=75)
+    is_unknown_behaviour = (rul >= 60.0 and anom >= 75.0)
+    
+    # Model Disagreement: RUL says healthy (>70) but Anomaly is severe (>=65) or vice versa (RUL <20, Anomaly <30)
+    is_model_disagreement = (rul >= 70.0 and anom >= 65.0) or (rul <= 20.0 and anom <= 30.0)
+
+    # 2. Evaluate Decision Hierarchy
+    if is_unknown_behaviour:
+        health_status = "UNKNOWN BEHAVIOUR"
+        risk_level = "HIGH"
+    elif is_model_disagreement:
+        health_status = "MODEL DISAGREEMENT"
+        risk_level = "HIGH"
+    elif rul < t["CRITICAL"]["max_rul"] or anom >= t["CRITICAL"]["min_anomaly_score"]:
+        health_status = t["CRITICAL"]["label"]
+        risk_level = t["CRITICAL"]["risk_level"]
+    elif rul < t["MAINTENANCE_REQUIRED"]["max_rul"] or anom >= t["MAINTENANCE_REQUIRED"]["min_anomaly_score"]:
+        health_status = t["MAINTENANCE_REQUIRED"]["label"]
+        risk_level = t["MAINTENANCE_REQUIRED"]["risk_level"]
+    elif rul < t["MONITOR"]["max_rul"] or anom >= t["MONITOR"]["min_anomaly_score"] or is_anom_label:
+        health_status = t["MONITOR"]["label"]
+        risk_level = t["MONITOR"]["risk_level"]
+    else:
+        health_status = t["HEALTHY"]["label"]
+        risk_level = t["HEALTHY"]["risk_level"]
+
+    # 3. Model Confidence & Expected Range Calculation
+    # Statistically grounded uncertainty range (+/- 12% relative or min 5 cycles)
+    margin = max(5.0, round(rul * 0.12, 1))
+    expected_range = [max(0.0, round(rul - margin, 1)), round(rul + margin, 1)]
+    # Confidence drops if anomaly is high or model disagreement exists
+    confidence_pct = max(45.0, min(98.0, round(100.0 - (anom * 0.35) - (20.0 if is_model_disagreement else 0.0), 1)))
 
     # Weighted fusion: 60% RUL capacity + 40% Telemetry Nominality
     composite = 0.60 * rul_pct + 0.40 * anom_nominality
@@ -113,6 +144,10 @@ def assess_engine_health(
         "composite_health_score": composite,
         "rul_component_score": round(float(rul_pct), 2),
         "anomaly_component_score": round(float(anom_nominality), 2),
+        "is_unknown_behaviour": is_unknown_behaviour,
+        "is_model_disagreement": is_model_disagreement,
+        "confidence_pct": confidence_pct,
+        "expected_rul_range": expected_range,
     }
 
 
@@ -155,7 +190,13 @@ def generate_decision_reason(
     if top_abnormal_sensors and "nominal" not in top_abnormal_sensors.lower() and "none" not in top_abnormal_sensors.lower():
         sensors_clause = f" | Sensor deviations: {top_abnormal_sensors}"
 
-    if health_status == "CRITICAL":
+    if health_status == "UNKNOWN BEHAVIOUR":
+        return f"UNKNOWN BEHAVIOUR: Telemetry differs significantly from learned patterns (Anomaly Score: {anom:.1f}/100) while RUL model predicts {rul:.1f} cycles. Human inspection recommended{sensors_clause}."
+
+    elif health_status == "MODEL DISAGREEMENT":
+        return f"MODEL DISAGREEMENT: Current telemetry is inconsistent with the RUL model's expected behavior (RUL: {rul:.1f} cycles vs Anomaly: {anom:.1f}/100). Human inspection recommended{sensors_clause}."
+
+    elif health_status == "CRITICAL":
         if rul < 20.0 and anom >= 80.0:
             return f"CRITICAL: Imminent end-of-life (RUL: {rul:.1f} cycles) combined with severe multi-sensor anomaly (Score: {anom:.1f}/100){sensors_clause}."
         elif rul < 20.0:

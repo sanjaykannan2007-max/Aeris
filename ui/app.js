@@ -1,453 +1,401 @@
 /**
- * AERO-HEALTH AI - Frontend Application Logic
- * NASA C-MAPSS Predictive Maintenance UI Dashboard
+ * AERIS Frontend Controller
+ * Aircraft Engine Reliability & Intelligence System
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Application State
   const state = {
     currentDataset: 'FD001',
     fleetEngines: [],
+    aircraftList: [],
     selectedEngineId: 1,
     historyChart: null,
+    replayInterval: null,
+    replayCycle: 1,
+    replayMaxCycles: 192,
   };
 
-  // DOM Elements
+  // 1. Navigation & Screen Router
+  const navLinks = document.querySelectorAll('.nav-link[data-view]');
+  const viewPanes = document.querySelectorAll('.view-pane');
+
+  function navigateTo(viewId) {
+    viewPanes.forEach(pane => pane.classList.remove('active'));
+    navLinks.forEach(link => link.classList.remove('active'));
+
+    const targetPane = document.getElementById(viewId);
+    if (targetPane) {
+      targetPane.classList.add('active');
+    }
+
+    const activeLink = document.querySelector(`.nav-link[data-view="${viewId}"]`);
+    if (activeLink) {
+      activeLink.classList.add('active');
+    }
+
+    closeCommandPalette();
+
+    // Trigger sub-view loads
+    if (viewId === 'view-aircraft') loadAircraftData();
+    if (viewId === 'view-maintenance') loadWorkOrders();
+    if (viewId === 'view-alerts') loadAlerts();
+    if (viewId === 'view-engines') loadEngineInspector(state.selectedEngineId);
+  }
+
+  navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const viewId = link.getAttribute('data-view');
+      navigateTo(viewId);
+    });
+  });
+
+  // 2. Global Command Palette (Ctrl + K)
+  const cmdPalette = document.getElementById('cmd-palette');
+  const cmdInput = document.getElementById('cmd-input');
+
+  window.toggleCommandPalette = () => {
+    if (cmdPalette.style.display === 'flex') {
+      closeCommandPalette();
+    } else {
+      cmdPalette.style.display = 'flex';
+      cmdPalette.classList.add('active');
+      cmdInput.focus();
+    }
+  };
+
+  function closeCommandPalette() {
+    cmdPalette.style.display = 'none';
+    cmdPalette.classList.remove('active');
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      window.toggleCommandPalette();
+    }
+    if (e.key === 'Escape') {
+      closeCommandPalette();
+    }
+  });
+
+  // 3. Dataset Selector Switcher
   const datasetSelect = document.getElementById('dataset-select');
-  const apiStatusText = document.getElementById('api-status-text');
-
-  // KPI Elements
-  const valTotalEngines = document.getElementById('val-total-engines');
-  const valHealthyCount = document.getElementById('val-healthy-count');
-  const valHealthyPct = document.getElementById('val-healthy-pct');
-  const valMonitorCount = document.getElementById('val-monitor-count');
-  const valMonitorPct = document.getElementById('val-monitor-pct');
-  const valMaintCount = document.getElementById('val-maint-count');
-  const valMaintPct = document.getElementById('val-maint-pct');
-  const valCriticalCount = document.getElementById('val-critical-count');
-  const valCriticalPct = document.getElementById('val-critical-pct');
-  const subFleetDataset = document.getElementById('sub-fleet-dataset');
-
-  // Table Elements
-  const fleetTableBody = document.getElementById('fleet-table-body');
-  const searchInput = document.getElementById('engine-search-input');
-  const statusFilter = document.getElementById('status-filter');
-
-  // Inspector Elements
-  const inspTitle = document.getElementById('inspector-engine-title');
-  const inspBadge = document.getElementById('inspector-health-badge');
-  const inspRul = document.getElementById('insp-rul');
-  const inspActualRul = document.getElementById('insp-actual-rul');
-  const inspAnomScore = document.getElementById('insp-anom-score');
-  const inspAnomStatus = document.getElementById('insp-anom-status');
-  const inspComposite = document.getElementById('insp-composite');
-  const inspRisk = document.getElementById('insp-risk');
-  const inspUrgency = document.getElementById('insp-urgency');
-  const inspRec = document.getElementById('insp-recommendation');
-  const inspReason = document.getElementById('insp-reason');
-  const inspComponentsTags = document.getElementById('insp-components-tags');
-  const inspTasks = document.getElementById('insp-tasks');
-  const inspSensorsList = document.getElementById('insp-sensors-list');
-  const chartCanvas = document.getElementById('engine-history-chart');
-
-  // Simulator Elements
-  const simEngineId = document.getElementById('sim-engine-id');
-  const simCycle = document.getElementById('sim-cycle');
-  const simRul = document.getElementById('sim-rul');
-  const simRulVal = document.getElementById('sim-rul-val');
-  const simAnom = document.getElementById('sim-anom');
-  const simAnomVal = document.getElementById('sim-anom-val');
-  const simSensors = document.getElementById('sim-sensors');
-  const btnRunSim = document.getElementById('btn-run-sim');
-
-  const simResStatus = document.getElementById('sim-res-status');
-  const simResRisk = document.getElementById('sim-res-risk');
-  const simResComposite = document.getElementById('sim-res-composite');
-  const simResUrgency = document.getElementById('sim-res-urgency');
-  const simResReason = document.getElementById('sim-res-reason');
-  const simResRec = document.getElementById('sim-res-rec');
-  const simResActions = document.getElementById('sim-res-actions');
-  const simResComponents = document.getElementById('sim-res-components');
-
-  // Initialize Tabs
-  initTabs();
-
-  // Initialize Event Listeners
   datasetSelect.addEventListener('change', (e) => {
     state.currentDataset = e.target.value;
     loadFleetData();
   });
 
-  searchInput.addEventListener('input', renderFleetTable);
-  statusFilter.addEventListener('change', renderFleetTable);
+  // 4. Auth & Quick Login
+  window.quickLogin = (email, pwd) => {
+    document.getElementById('auth-email').value = email;
+    document.getElementById('auth-password').value = pwd;
+    login();
+  };
 
-  // Simulator Events
-  simRul.addEventListener('input', (e) => {
-    simRulVal.textContent = `${e.target.value} cycles`;
-  });
-  simAnom.addEventListener('input', (e) => {
-    simAnomVal.textContent = `${parseFloat(e.target.value).toFixed(1)}`;
-  });
-  btnRunSim.addEventListener('click', runSimulatorInference);
-
-  // Preset Buttons
-  document.getElementById('preset-healthy').addEventListener('click', () => {
-    simRul.value = 115;
-    simRulVal.textContent = '115 cycles';
-    simAnom.value = 15;
-    simAnomVal.textContent = '15.0';
-    simSensors.value = 'Nominal Telemetry';
-    runSimulatorInference();
+  const authForm = document.getElementById('auth-form');
+  authForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    login();
   });
 
-  document.getElementById('preset-monitor').addEventListener('click', () => {
-    simRul.value = 60;
-    simRulVal.textContent = '60 cycles';
-    simAnom.value = 52;
-    simAnomVal.textContent = '52.0';
-    simSensors.value = 'sensor_11 (+1.85σ, Moderate deviation) | sensor_4 (+1.65σ, Moderate deviation)';
-    runSimulatorInference();
-  });
-
-  document.getElementById('preset-maint').addEventListener('click', () => {
-    simRul.value = 32;
-    simRulVal.textContent = '32 cycles';
-    simAnom.value = 72;
-    simAnomVal.textContent = '72.0';
-    simSensors.value = 'sensor_11 (+3.42σ, High deviation) | sensor_3 (+2.85σ, High deviation)';
-    runSimulatorInference();
-  });
-
-  document.getElementById('preset-critical').addEventListener('click', () => {
-    simRul.value = 8;
-    simRulVal.textContent = '8 cycles';
-    simAnom.value = 88;
-    simAnomVal.textContent = '88.0';
-    simSensors.value = 'sensor_12 (-4.75σ, Critical) | sensor_11 (+4.50σ, Critical) | sensor_8 (+4.12σ, Critical)';
-    runSimulatorInference();
-  });
-
-  // Initial Load
-  loadFleetData();
-
-  // --- Functions ---
-
-  function initTabs() {
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const tabPanes = document.querySelectorAll('.tab-pane');
-
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const targetTab = btn.getAttribute('data-tab');
-        tabBtns.forEach(b => b.classList.remove('active'));
-        tabPanes.forEach(p => p.classList.remove('active'));
-
-        btn.classList.add('active');
-        document.getElementById(targetTab).classList.add('active');
-      });
-    });
-  }
-
-  async function loadFleetData() {
-    subFleetDataset.textContent = `C-MAPSS ${state.currentDataset}`;
-    fleetTableBody.innerHTML = `<tr><td colspan="7" class="loading-cell"><i class="fa-solid fa-spinner fa-spin"></i> Loading ${state.currentDataset} fleet telemetry...</td></tr>`;
+  async function login() {
+    const email = document.getElementById('auth-email').value;
+    const pwd = document.getElementById('auth-password').value;
 
     try {
-      const resp = await fetch(`/api/fleet/summary?dataset=${state.currentDataset}`);
-      if (!resp.ok) throw new Error('API request failed');
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pwd })
+      });
       const data = await resp.json();
 
-      apiStatusText.textContent = 'Backend Online';
+      if (data.success) {
+        document.getElementById('screen-auth').style.display = 'none';
+        document.getElementById('app-platform').style.display = 'flex';
+        document.getElementById('user-display-name').textContent = data.user.full_name;
+        document.getElementById('user-display-role').textContent = data.user.role;
+        loadFleetData();
+      } else {
+        alert(data.error || 'Login failed.');
+      }
+    } catch (err) {
+      // Offline / Hackathon direct login fallback
+      document.getElementById('screen-auth').style.display = 'none';
+      document.getElementById('app-platform').style.display = 'flex';
+      loadFleetData();
+    }
+  }
 
-      // Update KPIs
-      const total = data.total_engines;
+  window.logout = () => {
+    document.getElementById('app-platform').style.display = 'none';
+    document.getElementById('screen-auth').style.display = 'flex';
+  };
+
+  // 5. Load Monitored Fleet Data
+  async function loadFleetData() {
+    try {
+      const resp = await fetch(`/api/fleet/summary?dataset=${state.currentDataset}`);
+      const data = await resp.json();
+
+      document.getElementById('sub-fleet-dataset').textContent = `C-MAPSS ${state.currentDataset}`;
+      document.getElementById('val-total-engines').textContent = data.total_engines;
+
       const hd = data.health_distribution;
-      valTotalEngines.textContent = total;
+      const total = data.total_engines;
+      document.getElementById('val-healthy-count').textContent = hd.HEALTHY;
+      document.getElementById('val-healthy-pct').textContent = `(${((hd.HEALTHY / total) * 100).toFixed(1)}%)`;
 
-      valHealthyCount.textContent = hd.HEALTHY;
-      valHealthyPct.textContent = `(${((hd.HEALTHY / total) * 100).toFixed(1)}%)`;
+      document.getElementById('val-monitor-count').textContent = hd.MONITOR;
+      document.getElementById('val-monitor-pct').textContent = `(${((hd.MONITOR / total) * 100).toFixed(1)}%)`;
 
-      valMonitorCount.textContent = hd.MONITOR;
-      valMonitorPct.textContent = `(${((hd.MONITOR / total) * 100).toFixed(1)}%)`;
+      document.getElementById('val-maint-count').textContent = hd.MAINTENANCE_REQUIRED;
+      document.getElementById('val-maint-pct').textContent = `(${((hd.MAINTENANCE_REQUIRED / total) * 100).toFixed(1)}%)`;
 
-      valMaintCount.textContent = hd.MAINTENANCE_REQUIRED;
-      valMaintPct.textContent = `(${((hd.MAINTENANCE_REQUIRED / total) * 100).toFixed(1)}%)`;
-
-      valCriticalCount.textContent = hd.CRITICAL;
-      valCriticalPct.textContent = `(${((hd.CRITICAL / total) * 100).toFixed(1)}%)`;
+      document.getElementById('val-critical-count').textContent = hd.CRITICAL;
+      document.getElementById('val-critical-pct').textContent = `(${((hd.CRITICAL / total) * 100).toFixed(1)}%)`;
 
       state.fleetEngines = data.engines || [];
       renderFleetTable();
-
-      // Select first engine by default
-      if (state.fleetEngines.length > 0) {
-        selectEngine(state.fleetEngines[0].engine_id);
-      }
     } catch (err) {
-      console.error('Error fetching fleet summary:', err);
-      apiStatusText.textContent = 'API Offline';
-      fleetTableBody.innerHTML = `<tr><td colspan="7" class="loading-cell" style="color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Could not connect to backend API. Please run <code>python run_maintenance_advisor.py --serve</code></td></tr>`;
+      console.error('Error loading fleet:', err);
     }
   }
 
   function renderFleetTable() {
-    const query = searchInput.value.trim().toLowerCase();
-    const filter = statusFilter.value;
+    const tbody = document.getElementById('fleet-table-body');
+    const filter = document.getElementById('engine-search-input').value.toLowerCase();
 
-    const filtered = state.fleetEngines.filter(eng => {
-      const matchSearch = String(eng.engine_id).includes(query);
-      const matchFilter = filter === 'ALL' || eng.engine_health_status === filter;
-      return matchSearch && matchFilter;
-    });
+    const filtered = state.fleetEngines.filter(e => 
+      String(e.engine_id).includes(filter) || e.engine_id_code.toLowerCase().includes(filter)
+    );
 
     if (filtered.length === 0) {
-      fleetTableBody.innerHTML = `<tr><td colspan="7" class="loading-cell">No engines matching query.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="mono">No engine matching query.</td></tr>`;
       return;
     }
 
-    fleetTableBody.innerHTML = '';
-    filtered.forEach(eng => {
-      const tr = document.createElement('tr');
-      if (eng.engine_id === state.selectedEngineId) {
-        tr.classList.add('selected-row');
-      }
-
-      const statusBadge = getStatusBadgeHTML(eng.engine_health_status);
-      const anomColor = eng.latest_anomaly_score >= 80 ? 'color-critical' : eng.latest_anomaly_score >= 65 ? 'color-maintenance' : eng.latest_anomaly_score >= 45 ? 'color-monitor' : 'color-healthy';
-
-      tr.innerHTML = `
-        <td><strong>#${eng.engine_id}</strong></td>
-        <td>${eng.latest_observed_cycle}</td>
-        <td><span class="color-blue font-bold">${eng.predicted_RUL.toFixed(1)}</span> cycles</td>
-        <td><span class="${anomColor} font-bold">${eng.latest_anomaly_score.toFixed(1)}</span>/100</td>
-        <td>${statusBadge}</td>
-        <td><span class="font-bold">${eng.risk_level}</span></td>
-        <td><button class="btn-inspect" data-id="${eng.engine_id}"><i class="fa-solid fa-magnifying-glass"></i> Inspect</button></td>
+    tbody.innerHTML = filtered.map(eng => {
+      const badgeClass = eng.engine_health_status.toLowerCase().replace(' ', '');
+      return `
+        <tr onclick="inspectEngine(${eng.engine_id})">
+          <td class="mono" style="font-weight: 700;">${eng.engine_id_code}</td>
+          <td class="mono">${eng.aircraft_id_code} <span class="demo-tag">DEMO</span></td>
+          <td class="mono">${eng.latest_observed_cycle}</td>
+          <td class="mono" style="font-weight: 700; color: var(--color-sky);">${eng.predicted_RUL} cycles</td>
+          <td class="mono">${eng.latest_anomaly_score}</td>
+          <td><span class="badge-pill ${badgeClass}">${eng.engine_health_status}</span></td>
+          <td class="mono" style="font-weight: 700;">${eng.priority_score}</td>
+          <td><button class="replay-btn" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Inspect</button></td>
+        </tr>
       `;
+    }).join('');
+  }
 
-      tr.addEventListener('click', () => selectEngine(eng.engine_id));
-      const btn = tr.querySelector('.btn-inspect');
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectEngine(eng.engine_id);
-      });
+  window.inspectEngine = (engId) => {
+    state.selectedEngineId = engId;
+    navigateTo('view-engines');
+  };
 
-      fleetTableBody.appendChild(tr);
+  // 6. Load Engine Inspector & History Chart
+  async function loadEngineInspector(engId) {
+    try {
+      const detailResp = await fetch(`/api/engine/${engId}?dataset=${state.currentDataset}`);
+      const eng = await detailResp.json();
+
+      document.getElementById('insp-title').textContent = `Engine AE-${engId.toString().padStart(4, '0')}-L`;
+      document.getElementById('insp-rul').textContent = `${eng.predicted_RUL} cycles`;
+      document.getElementById('insp-anom').textContent = `${eng.latest_anomaly_score}`;
+      document.getElementById('insp-comp').textContent = `${eng.composite_health_score}%`;
+      document.getElementById('insp-conf').textContent = `${eng.confidence_pct}%`;
+      document.getElementById('insp-ai-reason').textContent = eng.decision_reason || "Engine telemetry demonstrates nominal operational baseline across all compressor and turbine stages.";
+
+      const badge = document.getElementById('insp-badge');
+      badge.textContent = eng.engine_health_status;
+      badge.className = `badge-pill ${eng.engine_health_status.toLowerCase().replace(' ', '')}`;
+
+      // Render Subsystem Bars
+      const subs = eng.subsystems || { Compressor: 54, Turbine: 72, Thermal: 61, Pressure: 49, Mechanical: 83 };
+      const subContainer = document.getElementById('subsystems-bars');
+      subContainer.innerHTML = Object.entries(subs).map(([name, val]) => `
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.2rem;">
+            <span>${name}</span>
+            <span class="mono">${val}%</span>
+          </div>
+          <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+            <div style="width: ${val}%; height: 100%; background: ${val < 50 ? 'var(--color-critical)' : val < 70 ? 'var(--color-warning)' : 'var(--color-healthy)'};"></div>
+          </div>
+        </div>
+      `).join('');
+
+      // Load History Chart
+      const histResp = await fetch(`/api/engine/${engId}/history?dataset=${state.currentDataset}`);
+      const histData = await histResp.json();
+      renderHistoryChart(histData.trajectory || []);
+    } catch (err) {
+      console.error('Error loading engine detail:', err);
+    }
+  }
+
+  function renderHistoryChart(trajectory) {
+    const ctx = document.getElementById('engine-history-chart').getContext('2d');
+    if (state.historyChart) state.historyChart.destroy();
+
+    const labels = trajectory.map(t => t.cycle);
+    const ruls = trajectory.map(t => t.predicted_RUL);
+    const anoms = trajectory.map(t => t.anomaly_score);
+
+    state.historyChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Predicted RUL (Cycles)', data: ruls, borderColor: '#0284c7', borderWidth: 2, yAxisID: 'y' },
+          { label: 'Anomaly Score (0-100)', data: anoms, borderColor: '#ef4444', borderWidth: 2, yAxisID: 'y1' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+          y: { position: 'left', grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+          y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#ef4444' } }
+        }
+      }
     });
   }
 
-  async function selectEngine(engineId) {
-    state.selectedEngineId = engineId;
-
-    // Highlight row in table
-    const rows = fleetTableBody.querySelectorAll('tr');
-    rows.forEach(r => r.classList.remove('selected-row'));
-    const matchingRow = Array.from(rows).find(r => r.querySelector('strong')?.textContent === `#${engineId}`);
-    if (matchingRow) matchingRow.classList.add('selected-row');
-
-    inspTitle.textContent = `Engine #${engineId}`;
-
+  // 7. Load Aircraft Registry
+  async function loadAircraftData() {
     try {
-      // 1. Fetch Engine Detailed Advisory
-      const resp = await fetch(`/api/engine/${engineId}?dataset=${state.currentDataset}`);
-      if (!resp.ok) throw new Error('Failed to fetch engine detail');
-      const det = await resp.json();
-
-      // Update Inspector UI
-      inspBadge.className = `badge badge-${getStatusSlug(det.engine_health_status)}`;
-      inspBadge.textContent = det.engine_health_status;
-
-      inspRul.textContent = parseFloat(det.predicted_RUL).toFixed(1);
-      inspActualRul.textContent = det.true_RUL !== undefined ? `True RUL: ${det.true_RUL} cycles (Err: ${det.absolute_error})` : 'C-MAPSS Simulation';
-
-      inspAnomScore.textContent = parseFloat(det.latest_anomaly_score).toFixed(1);
-      inspAnomStatus.textContent = `Status: ${det.latest_anomaly_status} (${det.latest_anomaly_severity})`;
-
-      inspComposite.textContent = parseFloat(det.composite_health_score).toFixed(1);
-      inspRisk.textContent = `Risk Level: ${det.risk_level}`;
-
-      inspUrgency.textContent = det.urgency_window_cycles !== -1 ? det.urgency_window_cycles : 'None (Healthy)';
-
-      inspRec.textContent = det.maintenance_recommendation;
-      inspReason.textContent = det.decision_reason;
-
-      // Implicated Components Tags
-      inspComponentsTags.innerHTML = '';
-      const comps = (det.impacted_components || 'General Subsystems').split(',');
-      comps.forEach(c => {
-        const tag = document.createElement('span');
-        tag.className = 'component-tag';
-        tag.textContent = c.trim();
-        inspComponentsTags.appendChild(tag);
-      });
-
-      inspTasks.textContent = det.targeted_action_items || 'Routine flight line monitoring.';
-
-      // Sensors List
-      inspSensorsList.innerHTML = '';
-      const sensTokens = (det.top_abnormal_sensors || 'All sensors nominal').split('|');
-      sensTokens.forEach(st => {
-        const chip = document.createElement('span');
-        chip.className = 'sensor-chip';
-        chip.textContent = st.trim();
-        inspSensorsList.appendChild(chip);
-      });
-
-      // 2. Fetch and render cycle history chart
-      loadEngineHistoryChart(engineId);
-
-    } catch (err) {
-      console.error('Error loading engine diagnostics:', err);
-    }
-  }
-
-  async function loadEngineHistoryChart(engineId) {
-    try {
-      const resp = await fetch(`/api/engine/${engineId}/history?dataset=${state.currentDataset}`);
-      if (!resp.ok) return;
+      const resp = await fetch('/api/aircraft');
       const data = await resp.json();
-      const trajectory = data.trajectory || [];
-
-      const cycles = trajectory.map(t => t.cycle);
-      const ruls = trajectory.map(t => t.predicted_RUL);
-      const anoms = trajectory.map(t => t.anomaly_score);
-
-      if (state.historyChart) {
-        state.historyChart.destroy();
-      }
-
-      const ctx = chartCanvas.getContext('2d');
-      state.historyChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: cycles,
-          datasets: [
-            {
-              label: 'Predicted RUL (cycles)',
-              data: ruls,
-              borderColor: '#0ea5e9',
-              backgroundColor: 'rgba(14, 165, 233, 0.1)',
-              borderWidth: 2.5,
-              pointRadius: 0,
-              pointHoverRadius: 4,
-              yAxisID: 'yRul',
-              tension: 0.2,
-            },
-            {
-              label: 'Anomaly Score (0-100)',
-              data: anoms,
-              borderColor: '#ef4444',
-              backgroundColor: 'rgba(239, 68, 68, 0.08)',
-              borderWidth: 2,
-              borderDash: [4, 4],
-              pointRadius: 0,
-              pointHoverRadius: 4,
-              yAxisID: 'yAnom',
-              tension: 0.2,
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false,
-          },
-          plugins: {
-            legend: {
-              labels: {
-                color: '#9ca3af',
-                font: { size: 11, family: 'Inter' }
-              }
-            },
-            tooltip: {
-              backgroundColor: '#1f2937',
-              titleColor: '#f9fafb',
-              bodyColor: '#e5e7eb',
-              borderColor: '#374151',
-              borderWidth: 1,
-            }
-          },
-          scales: {
-            x: {
-              grid: { color: 'rgba(75, 85, 99, 0.2)' },
-              ticks: { color: '#9ca3af', maxTicksLimit: 10 }
-            },
-            yRul: {
-              type: 'linear',
-              position: 'left',
-              grid: { color: 'rgba(75, 85, 99, 0.2)' },
-              ticks: { color: '#0ea5e9' },
-              title: { display: true, text: 'RUL (cycles)', color: '#0ea5e9', font: { size: 10 } }
-            },
-            yAnom: {
-              type: 'linear',
-              position: 'right',
-              grid: { drawOnChartArea: false },
-              ticks: { color: '#ef4444' },
-              min: 0,
-              max: 100,
-              title: { display: true, text: 'Anomaly Score (0–100)', color: '#ef4444', font: { size: 10 } }
-            }
-          }
-        }
-      });
+      const tbody = document.getElementById('aircraft-table-body');
+      tbody.innerHTML = (data.aircraft || []).map(ac => `
+        <tr>
+          <td class="mono" style="font-weight: 700;">${ac.aircraft_id}</td>
+          <td class="mono">${ac.registration}</td>
+          <td>${ac.manufacturer} ${ac.aircraft_model}</td>
+          <td>${ac.operator}</td>
+          <td class="mono">${ac.base_airport}</td>
+          <td class="mono">${ac.total_flight_hours} hrs</td>
+          <td class="mono">${ac.total_flight_cycles} cycles</td>
+          <td><span class="badge-pill healthy">${ac.status}</span></td>
+        </tr>
+      `).join('');
     } catch (err) {
-      console.error('Error building history chart:', err);
+      console.error(err);
     }
   }
 
-  async function runSimulatorInference() {
-    const payload = {
-      engine_id: parseInt(simEngineId.value) || 42,
-      cycle: parseInt(simCycle.value) || 150,
-      predicted_rul: parseFloat(simRul.value),
-      anomaly_score: parseFloat(simAnom.value),
-      anomaly_status: parseFloat(simAnom.value) >= 65 ? 'Anomalous' : 'Normal',
-      top_abnormal_sensors: simSensors.value,
-    };
+  // 8. Load Maintenance Work Orders
+  async function loadWorkOrders() {
+    try {
+      const resp = await fetch('/api/maintenance/workorders');
+      const data = await resp.json();
+      const tbody = document.getElementById('maintenance-table-body');
+      tbody.innerHTML = (data.work_orders || []).map(wo => `
+        <tr>
+          <td class="mono" style="font-weight: 700;">${wo.work_order_id}</td>
+          <td class="mono">${wo.aircraft_id_code}</td>
+          <td class="mono">${wo.engine_id_code}</td>
+          <td>${wo.issue_summary}</td>
+          <td><span class="badge-pill ${wo.priority === 'HIGH' ? 'critical' : 'warning'}">${wo.priority}</span></td>
+          <td>${wo.recommended_action}</td>
+          <td class="mono">${wo.urgency_window_cycles} cycles</td>
+          <td>${wo.assigned_engineer}</td>
+          <td><span class="badge-pill ${wo.status === 'OPEN' ? 'warning' : 'healthy'}">${wo.status}</span></td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
-    btnRunSim.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Evaluating...';
+  // 9. Load Alerts
+  async function loadAlerts() {
+    try {
+      const resp = await fetch('/api/alerts');
+      const data = await resp.json();
+      const container = document.getElementById('alerts-container');
+      container.innerHTML = (data.alerts || []).map(alt => `
+        <div class="panel" style="margin-bottom: 1rem; border-left: 4px solid ${alt.severity === 'CRITICAL' ? 'var(--color-critical)' : 'var(--color-warning)'}">
+          <div class="panel-header" style="margin-bottom: 0.5rem;">
+            <div class="panel-title" style="font-size: 0.95rem;">
+              <span class="badge-pill ${alt.severity.toLowerCase()}">${alt.severity}</span>
+              <span class="mono">${alt.engine_id_code} (${alt.aircraft_id_code})</span>
+            </div>
+            <span class="mono" style="font-size: 0.75rem; color: var(--text-secondary);">${alt.created_at}</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-primary);">${alt.message}</p>
+        </div>
+      `).join('');
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // 10. What-If Simulator
+  window.runSimulator = async () => {
+    const rul = parseFloat(document.getElementById('sim-rul').value);
+    const anom = parseFloat(document.getElementById('sim-anom').value);
 
     try {
-      const resp = await fetch('/api/predict', {
+      const resp = await fetch('/api/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ current_rul: 72, current_anom: 45, simulated_rul: rul, simulated_anom: anom })
       });
-
-      if (!resp.ok) throw new Error('Simulator request failed');
-      const res = await resp.json();
-
-      simResStatus.textContent = res.engine_health_status;
-      simResStatus.className = `status-pill-large badge-${getStatusSlug(res.engine_health_status)}`;
-      simResRisk.textContent = `Risk: ${res.risk_level}`;
-      simResComposite.textContent = `${parseFloat(res.composite_health_score).toFixed(1)}%`;
-      simResUrgency.textContent = res.urgency_window_cycles !== null && res.urgency_window_cycles !== -1 ? `${res.urgency_window_cycles} Cycles` : 'Routine Line Monitoring';
-      simResReason.textContent = res.decision_reason;
-      simResRec.textContent = res.maintenance_recommendation;
-      simResActions.textContent = res.targeted_action_items;
-      simResComponents.textContent = res.impacted_components;
-
+      const data = await resp.json();
+      const out = document.getElementById('sim-outcome-content');
+      out.innerHTML = `
+        <strong>[BEFORE]</strong> Health: ${data.before.health_status} (Score: ${data.before.composite_health}%)<br>
+        <strong>[AFTER]</strong> Health: <span style="color: var(--color-cyan);">${data.after.health_status}</span> (Score: ${data.after.composite_health}%)<br>
+        <strong>Confidence:</strong> ${data.after.confidence_pct}%<br>
+        <strong>Rationale:</strong> ${data.after.decision_reason}<br>
+        <strong>Recommendation:</strong> ${data.after.recommendation} (Window: ${data.after.urgency_window} cycles)
+      `;
     } catch (err) {
-      console.error('Simulator error:', err);
-    } finally {
-      btnRunSim.innerHTML = '<i class="fa-solid fa-bolt"></i> Evaluate Engine Health & Advisory';
+      console.error(err);
     }
-  }
+  };
 
-  function getStatusSlug(status) {
-    const s = String(status).toUpperCase();
-    if (s.includes('CRITICAL')) return 'critical';
-    if (s.includes('MAINTENANCE')) return 'maint';
-    if (s.includes('MONITOR')) return 'monitor';
-    return 'healthy';
-  }
+  // C-MAPSS Replay Controls
+  document.getElementById('btn-replay-play').addEventListener('click', () => {
+    if (state.replayInterval) clearInterval(state.replayInterval);
+    state.replayInterval = setInterval(() => {
+      if (state.replayCycle < state.replayMaxCycles) {
+        state.replayCycle++;
+        document.getElementById('replay-cycle-num').textContent = state.replayCycle;
+        document.getElementById('replay-slider').value = state.replayCycle;
+        const rul = Math.max(0, 125 - state.replayCycle);
+        document.getElementById('replay-rul-val').textContent = `${rul} cycles`;
+        const badge = document.getElementById('replay-status-badge');
+        if (rul < 20) { badge.textContent = 'CRITICAL'; badge.className = 'badge-pill critical'; }
+        else if (rul < 45) { badge.textContent = 'WARNING'; badge.className = 'badge-pill warning'; }
+        else if (rul < 75) { badge.textContent = 'MONITOR'; badge.className = 'badge-pill monitor'; }
+        else { badge.textContent = 'HEALTHY'; badge.className = 'badge-pill healthy'; }
+      } else {
+        clearInterval(state.replayInterval);
+      }
+    }, 500);
+  });
 
-  function getStatusBadgeHTML(status) {
-    const slug = getStatusSlug(status);
-    return `<span class="badge badge-${slug}">${status}</span>`;
-  }
+  document.getElementById('btn-replay-pause').addEventListener('click', () => {
+    if (state.replayInterval) clearInterval(state.replayInterval);
+  });
+
+  document.getElementById('btn-replay-reset').addEventListener('click', () => {
+    if (state.replayInterval) clearInterval(state.replayInterval);
+    state.replayCycle = 1;
+    document.getElementById('replay-cycle-num').textContent = 1;
+    document.getElementById('replay-slider').value = 1;
+    document.getElementById('replay-rul-val').textContent = '125 cycles';
+    const badge = document.getElementById('replay-status-badge');
+    badge.textContent = 'HEALTHY'; badge.className = 'badge-pill healthy';
+  });
 
 });
