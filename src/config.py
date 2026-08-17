@@ -19,10 +19,12 @@ DATA_PROCESSED_DIR  = PROJECT_ROOT / "data" / "processed"
 DATA_FEATURES_DIR   = PROJECT_ROOT / "data" / "features"
 
 MODELS_SCALERS_DIR  = PROJECT_ROOT / "models" / "scalers"
+MODELS_RUL_DIR      = PROJECT_ROOT / "models" / "rul"
 
 OUTPUTS_PLOTS_DIR       = PROJECT_ROOT / "outputs" / "plots"
 OUTPUTS_STATISTICS_DIR  = PROJECT_ROOT / "outputs" / "statistics"
 OUTPUTS_REPORTS_DIR     = PROJECT_ROOT / "outputs" / "reports"
+OUTPUTS_PREDICTIONS_DIR = PROJECT_ROOT / "outputs" / "predictions"
 
 NOTEBOOKS_DIR = PROJECT_ROOT / "notebooks"
 
@@ -111,3 +113,36 @@ DATASET_META = {
         "test_engines": 249,
     },
 }
+
+# ---------------------------------------------------------------------------
+# RUL Model Hyperparameters
+# ---------------------------------------------------------------------------
+RF_PARAMS = {
+    "n_estimators": 100,
+    "max_depth": 15,
+    "min_samples_split": 5,
+    "min_samples_leaf": 2,
+    "random_state": 42,
+    "n_jobs": -1,
+}
+
+XGB_PARAMS = {
+    "n_estimators": 100,
+    "max_depth": 6,
+    "learning_rate": 0.05,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "random_state": 42,
+    "n_jobs": -1,
+}
+
+# ---------------------------------------------------------------------------
+# Engine Health Score Thresholds (%)
+# ---------------------------------------------------------------------------
+HEALTH_STAGES = {
+    "HEALTHY": {"min_score": 75.0, "label": "HEALTHY", "color": "green"},
+    "MONITOR": {"min_score": 45.0, "label": "MONITOR", "color": "yellow"},
+    "MAINTENANCE_REQUIRED": {"min_score": 20.0, "label": "MAINTENANCE REQUIRED", "color": "orange"},
+    "CRITICAL": {"min_score": 0.0, "label": "CRITICAL", "color": "red"},
+}
+

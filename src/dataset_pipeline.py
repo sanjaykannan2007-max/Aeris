@@ -292,7 +292,7 @@ def _save_report(report: dict, subset: str) -> None:
     with open(txt_path, "w") as f:
         f.write("\n".join(lines))
 
-    print(f"  [report] Saved → {json_path.name} + {txt_path.name}")
+    print(f"  [report] Saved -> {json_path.name} + {txt_path.name}")
 
 
 # ---------------------------------------------------------------------------

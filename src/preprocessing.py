@@ -80,7 +80,7 @@ def fit_and_save_scaler(
     scaler_path = MODELS_SCALERS_DIR / f"scaler_{subset}.pkl"
     joblib.dump(scaler, scaler_path)
 
-    print(f"  [preproc] Fitted {type(scaler).__name__} on training data → saved to {scaler_path.name}")
+    print(f"  [preproc] Fitted {type(scaler).__name__} on training data -> saved to {scaler_path.name}")
     return scaler
 
 
@@ -123,4 +123,4 @@ def save_processed(df: pd.DataFrame, subset: str, split: str) -> None:
     DATA_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     out_path = DATA_PROCESSED_DIR / f"processed_{split}_{subset}.csv"
     df.to_csv(out_path, index=False)
-    print(f"  [preproc] Saved → {out_path.name}  ({df.shape[0]:,} rows × {df.shape[1]} cols)")
+    print(f"  [preproc] Saved -> {out_path.name}  ({df.shape[0]:,} rows × {df.shape[1]} cols)")

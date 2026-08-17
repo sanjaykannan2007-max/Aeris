@@ -1,6 +1,6 @@
-# PS-S02 – Aircraft Engine Health Monitoring: Data Engineering Module
+# PS-S02 – Aircraft Engine Health Monitoring & Predictive Maintenance
 
-> **Person 1 – Data Engineering** | NASA C-MAPSS Dataset (FD001–FD004)
+> **Person 1 – Data Engineering** & **Person 2 – RUL & Engine Health Prediction** | NASA C-MAPSS Dataset (FD001–FD004)
 
 ---
 
@@ -172,6 +172,34 @@ python run_pipeline.py --dataset all --max_rul 130 --window 7 --scaler standard
 | `--max_rul` | `125` | RUL cap value |
 | `--window` | `5` | Rolling window size in cycles |
 | `--scaler` | `minmax` | `minmax` or `standard` |
+
+---
+
+## Person 2 – RUL & Engine Health Prediction Pipeline
+
+Run model training, evaluation, health score computation, and prediction exports:
+
+```bash
+# Train both Random Forest & XGBoost models on all datasets
+python train_rul_models.py --dataset all --model both
+
+# Train XGBoost on a single dataset
+python train_rul_models.py --dataset FD001 --model xgboost
+```
+
+### Benchmark Model Evaluation Metrics (Test Engines at Last Observed Cycle)
+
+| Dataset | Model | Final MAE | Final RMSE | Final $R^2$ | NASA Score |
+|---|---|---|---|---|---|
+| **FD001** | **XGBoost** | **12.12** | **17.37** | **0.812** | **933.3** |
+| **FD001** | Random Forest | 12.64 | 18.03 | 0.797 | 1103.5 |
+| **FD002** | **Random Forest** | **13.16** | **17.11** | **0.841** | **2058.9** |
+| **FD002** | XGBoost | 13.22 | 17.24 | 0.839 | 2190.7 |
+| **FD003** | **Random Forest** | **13.27** | **19.25** | **0.758** | **1688.0** |
+| **FD003** | XGBoost | 13.95 | 19.56 | 0.750 | 1644.1 |
+| **FD004** | **XGBoost** | **14.08** | **19.01** | **0.804** | **2879.4** |
+| **FD004** | Random Forest | 14.51 | 19.59 | 0.792 | 3365.6 |
+
 
 ---
 

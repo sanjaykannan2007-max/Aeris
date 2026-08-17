@@ -9,10 +9,8 @@ __pycache__/
 data/cleaned/
 data/processed/
 data/features/
-models/scalers/
-outputs/plots/
-outputs/reports/
-outputs/statistics/
+models/
+outputs/
 
 # Environments & IDEs
 .venv/
