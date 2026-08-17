@@ -117,5 +117,5 @@ def save_sensor_statistics(all_stats: list[pd.DataFrame]) -> None:
     combined = pd.concat(all_stats, ignore_index=True)
     out_path = OUTPUTS_STATISTICS_DIR / "sensor_statistics.csv"
     combined.to_csv(out_path, index=False)
-    print(f"  [sensor] Sensor statistics saved → {out_path}")
+    print(f"  [sensor] Sensor statistics saved -> {out_path}")
     return combined

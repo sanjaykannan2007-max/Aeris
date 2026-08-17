@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AERO-HEALTH AI | Aircraft Engine Predictive Maintenance Dashboard</title>
+  
+  <!-- Google Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Top Navigation Header -->
+    <header class="navbar">
+      <div class="nav-brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-jet-fighter"></i>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">PARALLAX <span class="accent-text">AERO-HEALTH</span></span>
+          <span class="brand-subtitle">NASA C-MAPSS Fleet Predictive Maintenance</span>
+        </div>
+      </div>
+
+      <div class="nav-controls">
+        <div class="dataset-selector-wrapper">
+          <label for="dataset-select"><i class="fa-solid fa-database"></i> Dataset:</label>
+          <select id="dataset-select" class="custom-select">
+            <option value="FD001" selected>FD001 (Single Cond, HPC Fault)</option>
+            <option value="FD002">FD002 (6 Conds, HPC Fault)</option>
+            <option value="FD003">FD003 (Single Cond, HPC + Fan Fault)</option>
+            <option value="FD004">FD004 (6 Conds, HPC + Fan Fault)</option>
+          </select>
+        </div>
+
+        <div class="system-status-pill">
+          <span class="status-indicator-dot pulse"></span>
+          <span id="api-status-text">Backend Online</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="dashboard-content">
+      
+      <!-- Top Fleet KPI Cards -->
+      <section class="kpi-grid">
+        <div class="kpi-card" id="kpi-total-engines">
+          <div class="kpi-icon-wrapper blue">
+            <i class="fa-solid fa-plane-engines"></i>
+          </div>
+          <div class="kpi-details">
+            <span class="kpi-label">Monitored Fleet</span>
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="val-total-engines">--</span>
+              <span class="kpi-unit">Engines</span>
+            </div>
+            <span class="kpi-subtext" id="sub-fleet-dataset">C-MAPSS FD001</span>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-healthy">
+          <div class="kpi-icon-wrapper green">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div class="kpi-details">
+            <span class="kpi-label">Healthy & Operational</span>
+            <div class="kpi-value-row">
+              <span class="kpi-value color-healthy" id="val-healthy-count">--</span>
+              <span class="kpi-unit" id="val-healthy-pct">(--%)</span>
+            </div>
+            <span class="kpi-subtext">Nominal baseline envelope</span>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-monitor">
+          <div class="kpi-icon-wrapper yellow">
+            <i class="fa-solid fa-eye"></i>
+          </div>
+          <div class="kpi-details">
+            <span class="kpi-label">Telemetry Monitoring</span>
+            <div class="kpi-value-row">
+              <span class="kpi-value color-monitor" id="val-monitor-count">--</span>
+              <span class="kpi-unit" id="val-monitor-pct">(--%)</span>
+            </div>
+            <span class="kpi-subtext">Mild drift / mid-life wear</span>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-maintenance">
+          <div class="kpi-icon-wrapper orange">
+            <i class="fa-solid fa-wrench"></i>
+          </div>
+          <div class="kpi-details">
+            <span class="kpi-label">Maintenance Required</span>
+            <div class="kpi-value-row">
+              <span class="kpi-value color-maintenance" id="val-maint-count">--</span>
+              <span class="kpi-unit" id="val-maint-pct">(--%)</span>
+            </div>
+            <span class="kpi-subtext">Borescope inspection window</span>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-critical">
+          <div class="kpi-icon-wrapper red">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <div class="kpi-details">
+            <span class="kpi-label">Critical Grounding</span>
+            <div class="kpi-value-row">
+              <span class="kpi-value color-critical" id="val-critical-count">--</span>
+              <span class="kpi-unit" id="val-critical-pct">(--%)</span>
+            </div>
+            <span class="kpi-subtext">Immediate depot overhaul</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Interactive Tab Controls -->
+      <div class="tab-navigation">
+        <button class="tab-btn active" data-tab="tab-fleet"><i class="fa-solid fa-layer-group"></i> Fleet Overview & Diagnostics</button>
+        <button class="tab-btn" data-tab="tab-simulator"><i class="fa-solid fa-sliders"></i> Real-Time Telemetry Simulator</button>
+        <button class="tab-btn" data-tab="tab-architecture"><i class="fa-solid fa-diagram-project"></i> ML Architecture & Methodology</button>
+      </div>
+
+      <!-- TAB 1: FLEET OVERVIEW & DIAGNOSTICS -->
+      <section id="tab-fleet" class="tab-pane active">
+        <div class="grid-2col">
+          
+          <!-- Left Column: Fleet Table & Filters -->
+          <div class="panel fleet-table-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <i class="fa-solid fa-list-check"></i>
+                <span>Engine Fleet Telemetry Table</span>
+              </div>
+              <div class="table-controls">
+                <input type="text" id="engine-search-input" placeholder="Search Engine #..." class="search-input">
+                <select id="status-filter" class="filter-select">
+                  <option value="ALL">All Health States</option>
+                  <option value="CRITICAL">Critical Only</option>
+                  <option value="MAINTENANCE REQUIRED">Maintenance Required</option>
+                  <option value="MONITOR">Monitor Only</option>
+                  <option value="HEALTHY">Healthy Only</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="fleet-table">
+                <thead>
+                  <tr>
+                    <th>Engine #</th>
+                    <th>Last Cycle</th>
+                    <th>Predicted RUL</th>
+                    <th>Anomaly Score</th>
+                    <th>Health Status</th>
+                    <th>Risk Rating</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="fleet-table-body">
+                  <tr>
+                    <td colspan="7" class="loading-cell"><i class="fa-solid fa-spinner fa-spin"></i> Loading fleet telemetry data...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Right Column: Selected Engine Diagnostic Inspector -->
+          <div class="panel engine-inspector-panel" id="engine-inspector">
+            <div class="panel-header">
+              <div class="panel-title">
+                <i class="fa-solid fa-microchip"></i>
+                <span>Engine Diagnostic Inspector: <span id="inspector-engine-title">Engine #1</span></span>
+              </div>
+              <span class="badge" id="inspector-health-badge">HEALTHY</span>
+            </div>
+
+            <div class="inspector-body">
+              <!-- Key Metrics Grid -->
+              <div class="metrics-grid">
+                <div class="metric-box">
+                  <span class="metric-title"><i class="fa-regular fa-clock"></i> Predicted RUL</span>
+                  <div class="metric-number-row">
+                    <span class="metric-number color-blue" id="insp-rul">--</span>
+                    <span class="metric-unit">Cycles</span>
+                  </div>
+                  <span class="metric-hint" id="insp-actual-rul">True RUL: --</span>
+                </div>
+
+                <div class="metric-box">
+                  <span class="metric-title"><i class="fa-solid fa-wave-square"></i> Anomaly Score</span>
+                  <div class="metric-number-row">
+                    <span class="metric-number" id="insp-anom-score">--</span>
+                    <span class="metric-unit">/ 100</span>
+                  </div>
+                  <span class="metric-hint" id="insp-anom-status">Status: Normal</span>
+                </div>
+
+                <div class="metric-box">
+                  <span class="metric-title"><i class="fa-solid fa-heart-pulse"></i> Composite Health</span>
+                  <div class="metric-number-row">
+                    <span class="metric-number" id="insp-composite">--</span>
+                    <span class="metric-unit">%</span>
+                  </div>
+                  <span class="metric-hint" id="insp-risk">Risk: Low</span>
+                </div>
+
+                <div class="metric-box">
+                  <span class="metric-title"><i class="fa-solid fa-hourglass-half"></i> Urgency Window</span>
+                  <div class="metric-number-row">
+                    <span class="metric-number" id="insp-urgency">--</span>
+                    <span class="metric-unit">Cycles</span>
+                  </div>
+                  <span class="metric-hint">Until compulsory service</span>
+                </div>
+              </div>
+
+              <!-- Maintenance Recommendation Banner -->
+              <div class="advisory-card" id="advisory-card">
+                <div class="advisory-icon"><i class="fa-solid fa-bell"></i></div>
+                <div class="advisory-content">
+                  <span class="advisory-label">Actionable Maintenance Recommendation</span>
+                  <h4 class="advisory-heading" id="insp-recommendation">Loading advisory...</h4>
+                  <p class="advisory-reason" id="insp-reason">Loading decision rationale...</p>
+                </div>
+              </div>
+
+              <!-- Implicated Subsystems & Specific Engineering Tasks -->
+              <div class="diagnostic-breakdown">
+                <div class="subsystem-box">
+                  <span class="section-title"><i class="fa-solid fa-gears"></i> Implicated Turbofan Subsystems</span>
+                  <div class="tags-container" id="insp-components-tags">
+                    <span class="component-tag">High-Pressure Compressor (HPC)</span>
+                  </div>
+                </div>
+
+                <div class="tasks-box">
+                  <span class="section-title"><i class="fa-solid fa-list-check"></i> Targeted Engineering Action Items</span>
+                  <p class="task-description" id="insp-tasks">Loading specific inspection tasks...</p>
+                </div>
+
+                <div class="sensors-box">
+                  <span class="section-title"><i class="fa-solid fa-chart-line"></i> Top Contributing Abnormal Sensors</span>
+                  <div class="sensors-list" id="insp-sensors-list">
+                    <span class="sensor-chip">sensor_11 (+3.42σ, High deviation)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Historical Trajectory Chart -->
+              <div class="chart-container-card">
+                <span class="section-title"><i class="fa-solid fa-chart-area"></i> Lifecycle Degradation Trajectory (Cycles 1 to Latest)</span>
+                <div class="chart-wrapper">
+                  <canvas id="engine-history-chart"></canvas>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 2: REAL-TIME TELEMETRY SIMULATOR -->
+      <section id="tab-simulator" class="tab-pane">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-sliders"></i>
+              <span>Live Engine Health & Maintenance Decision Simulator</span>
+            </div>
+            <span class="subtext">Simulate instantaneous aircraft sensor telemetry and evaluate maintenance decisions</span>
+          </div>
+
+          <div class="simulator-grid">
+            <div class="sim-controls-pane">
+              <h4 class="pane-subtitle"><i class="fa-solid fa-wrench"></i> Simulator Input Parameters</h4>
+              
+              <div class="preset-buttons-row">
+                <button class="preset-btn" id="preset-healthy"><i class="fa-solid fa-shield-halved"></i> Healthy Preset</button>
+                <button class="preset-btn" id="preset-monitor"><i class="fa-solid fa-eye"></i> Monitor Preset</button>
+                <button class="preset-btn" id="preset-maint"><i class="fa-solid fa-wrench"></i> Maintenance Req Preset</button>
+                <button class="preset-btn" id="preset-critical"><i class="fa-solid fa-triangle-exclamation"></i> Critical Failure Preset</button>
+              </div>
+
+              <div class="input-group">
+                <label for="sim-engine-id">Engine ID:</label>
+                <input type="number" id="sim-engine-id" value="42" class="custom-input">
+              </div>
+
+              <div class="input-group">
+                <label for="sim-cycle">Current Operating Cycle:</label>
+                <input type="number" id="sim-cycle" value="165" class="custom-input">
+              </div>
+
+              <div class="input-group">
+                <div class="slider-header">
+                  <label for="sim-rul">Predicted Remaining Useful Life (RUL):</label>
+                  <span class="slider-val" id="sim-rul-val">35 cycles</span>
+                </div>
+                <input type="range" id="sim-rul" min="1" max="130" value="35" class="custom-slider">
+              </div>
+
+              <div class="input-group">
+                <div class="slider-header">
+                  <label for="sim-anom">Calibrated Anomaly Score (0–100):</label>
+                  <span class="slider-val" id="sim-anom-val">72.5</span>
+                </div>
+                <input type="range" id="sim-anom" min="0" max="100" value="72" class="custom-slider">
+              </div>
+
+              <div class="input-group">
+                <label for="sim-sensors">Abnormal Sensors Telemetry String:</label>
+                <input type="text" id="sim-sensors" value="sensor_11 (+3.82σ, High deviation) | sensor_4 (+2.75σ, High deviation)" class="custom-input">
+              </div>
+
+              <button class="btn-primary" id="btn-run-sim"><i class="fa-solid fa-bolt"></i> Evaluate Engine Health & Advisory</button>
+            </div>
+
+            <div class="sim-result-pane">
+              <h4 class="pane-subtitle"><i class="fa-solid fa-square-poll-vertical"></i> Multi-Factor Inference Result</h4>
+              
+              <div class="sim-result-card" id="sim-result-card">
+                <div class="sim-status-header">
+                  <span class="status-pill-large" id="sim-res-status">MAINTENANCE REQUIRED</span>
+                  <span class="risk-pill" id="sim-res-risk">Risk: HIGH</span>
+                </div>
+
+                <div class="sim-kpi-row">
+                  <div class="sim-kpi">
+                    <span class="kpi-label">Composite Health Index</span>
+                    <span class="kpi-val" id="sim-res-composite">38.4%</span>
+                  </div>
+                  <div class="sim-kpi">
+                    <span class="kpi-label">Urgency Window</span>
+                    <span class="kpi-val" id="sim-res-urgency">15 Cycles</span>
+                  </div>
+                </div>
+
+                <div class="sim-section">
+                  <span class="sim-label">Decision Reason:</span>
+                  <p class="sim-text" id="sim-res-reason">Evaluating...</p>
+                </div>
+
+                <div class="sim-section">
+                  <span class="sim-label">Primary Maintenance Recommendation:</span>
+                  <p class="sim-text-bold" id="sim-res-rec">Evaluating...</p>
+                </div>
+
+                <div class="sim-section">
+                  <span class="sim-label">Targeted Engineering Actions:</span>
+                  <p class="sim-text-actions" id="sim-res-actions">Evaluating...</p>
+                </div>
+
+                <div class="sim-section">
+                  <span class="sim-label">Implicated Turbofan Components:</span>
+                  <p class="sim-text-components" id="sim-res-components">Evaluating...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: ML ARCHITECTURE & METHODOLOGY -->
+      <section id="tab-architecture" class="tab-pane">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-diagram-project"></i>
+              <span>NASA C-MAPSS End-to-End System Architecture</span>
+            </div>
+          </div>
+
+          <div class="arch-container">
+            <div class="pipeline-flow-diagram">
+              <div class="flow-card p1">
+                <div class="flow-badge">Person 1</div>
+                <h4>Data Engineering</h4>
+                <p>NASA C-MAPSS Telemetry Preprocessing, MinMax Normalisation, Rolling Window Features (mean, std, lag, diff).</p>
+              </div>
+              
+              <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+
+              <div class="flow-parallel-col">
+                <div class="flow-card p2">
+                  <div class="flow-badge">Person 2</div>
+                  <h4>RUL & Health Prediction</h4>
+                  <p>Random Forest & XGBoost Regressors predicting Remaining Useful Life (RUL) and RUL-based Health Score.</p>
+                </div>
+
+                <div class="flow-card p3">
+                  <div class="flow-badge">Person 3</div>
+                  <h4>Anomaly & Fault Detection</h4>
+                  <p>Isolation Forest learning nominal baseline envelope, generating 0–100 Anomaly Scores & Sensor z-scores.</p>
+                </div>
+              </div>
+
+              <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+
+              <div class="flow-card p4">
+                <div class="flow-badge">Person 4</div>
+                <h4>Integration & Maintenance Advisor</h4>
+                <p>Multi-Factor Health Engine (HEALTHY, MONITOR, MAINT REQ, CRITICAL), Explainable Reasons & REST API.</p>
+              </div>
+            </div>
+
+            <div class="matrix-card">
+              <h3>Multi-Factor Decision Matrix</h3>
+              <table class="matrix-table">
+                <thead>
+                  <tr>
+                    <th>Health Category</th>
+                    <th>RUL Threshold</th>
+                    <th>Anomaly Score</th>
+                    <th>Operational Directive</th>
+                    <th>Urgency Limit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="row-healthy">
+                    <td><span class="badge badge-healthy">HEALTHY</span></td>
+                    <td>RUL &ge; 75 cycles</td>
+                    <td>Score &lt; 45 (Nominal)</td>
+                    <td>Continue normal flight operations & routine line service</td>
+                    <td>Routine Service</td>
+                  </tr>
+                  <tr class="row-monitor">
+                    <td><span class="badge badge-monitor">MONITOR</span></td>
+                    <td>45 &le; RUL &lt; 75</td>
+                    <td>45 &le; Score &lt; 65 (Mild Drift)</td>
+                    <td>Approved for line service with heightened telemetry & vibration sampling</td>
+                    <td>30 Cycles</td>
+                  </tr>
+                  <tr class="row-maintenance">
+                    <td><span class="badge badge-maint">MAINTENANCE REQUIRED</span></td>
+                    <td>20 &le; RUL &lt; 45</td>
+                    <td>65 &le; Score &lt; 80 (Moderate)</td>
+                    <td>Schedule priority borescope inspection at next ground maintenance window</td>
+                    <td>15 Cycles</td>
+                  </tr>
+                  <tr class="row-critical">
+                    <td><span class="badge badge-critical">CRITICAL</span></td>
+                    <td>RUL &lt; 20 cycles</td>
+                    <td>Score &ge; 80 (Severe)</td>
+                    <td><strong>IMMEDIATE ACTION:</strong> Ground engine for depot teardown and overhaul</td>
+                    <td>0 Cycles (Immediate)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="disclaimer-banner">
+              <i class="fa-solid fa-circle-info"></i>
+              <span><strong>Notice:</strong> This predictive health assessment and maintenance recommendation system is a research decision-support prototype developed on NASA C-MAPSS turbofan simulation data. It does not replace or supersede certified FAA/EASA airworthiness directives, engine shop manuals (ESM), or approved airline standard operating procedures.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span>PS-S02 Aircraft Engine Predictive Maintenance System &bull; NASA C-MAPSS FD001–FD004</span>
+      <span>Engine Health Decision Support &bull; Backend REST API at <code>http://localhost:8000/api</code></span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

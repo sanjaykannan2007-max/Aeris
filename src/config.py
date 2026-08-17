@@ -20,6 +20,7 @@ DATA_FEATURES_DIR   = PROJECT_ROOT / "data" / "features"
 
 MODELS_SCALERS_DIR  = PROJECT_ROOT / "models" / "scalers"
 MODELS_RUL_DIR      = PROJECT_ROOT / "models" / "rul"
+MODELS_ANOMALY_DIR  = PROJECT_ROOT / "models" / "anomaly"
 
 OUTPUTS_PLOTS_DIR       = PROJECT_ROOT / "outputs" / "plots"
 OUTPUTS_STATISTICS_DIR  = PROJECT_ROOT / "outputs" / "statistics"
@@ -145,4 +146,106 @@ HEALTH_STAGES = {
     "MAINTENANCE_REQUIRED": {"min_score": 20.0, "label": "MAINTENANCE REQUIRED", "color": "orange"},
     "CRITICAL": {"min_score": 0.0, "label": "CRITICAL", "color": "red"},
 }
+
+# ---------------------------------------------------------------------------
+# Anomaly Detection Configuration (Person 3)
+# ---------------------------------------------------------------------------
+ISOLATION_FOREST_PARAMS = {
+    "n_estimators": 150,
+    "max_samples": "auto",
+    "contamination": 0.08,
+    "random_state": 42,
+    "n_jobs": -1,
+}
+
+# Normalized Anomaly Score Categories (0 - 100)
+# 0 = Completely Nominal / Healthy, 100 = Severe Anomaly
+ANOMALY_STAGES = {
+    "NOMINAL": {"min_score": 0.0, "max_score": 45.0, "label": "Normal", "severity": "Nominal", "color": "#2ca02c"},
+    "MILD": {"min_score": 45.0, "max_score": 65.0, "label": "Normal", "severity": "Mild Drift", "color": "#ff7f0e"},
+    "MODERATE": {"min_score": 65.0, "max_score": 80.0, "label": "Anomalous", "severity": "Moderate Anomaly", "color": "#d62728"},
+    "SEVERE": {"min_score": 80.0, "max_score": 100.0, "label": "Anomalous", "severity": "Severe Anomaly", "color": "#7f0000"},
+}
+
+ANOMALY_SCORE_THRESHOLD = 60.0  # Above this score -> Classified as Anomaly
+
+# Sensor Z-Score Deviation Categories (|z|)
+SENSOR_DEVIATION_LEVELS = {
+    "CRITICAL": {"min_z": 3.0, "label": "Critical deviation", "rank": 1},
+    "HIGH": {"min_z": 2.0, "label": "High deviation", "rank": 2},
+    "MODERATE": {"min_z": 1.0, "label": "Moderate deviation", "rank": 3},
+    "LOW": {"min_z": 0.0, "label": "Low deviation", "rank": 4},
+}
+
+# ---------------------------------------------------------------------------
+# Person 4 – Integration & Maintenance Recommendation Configuration
+# ---------------------------------------------------------------------------
+# Multi-Factor Health Decision Thresholds (Configurable)
+MAINTENANCE_DECISION_THRESHOLDS = {
+    "CRITICAL": {
+        "max_rul": 20.0,             # RUL < 20 cycles
+        "min_anomaly_score": 80.0,   # Anomaly Score >= 80.0
+        "label": "CRITICAL",
+        "color": "#d62728",          # Red
+        "risk_level": "CRITICAL",
+        "default_urgency_window": 5, # Must service within 5 cycles
+    },
+    "MAINTENANCE_REQUIRED": {
+        "max_rul": 45.0,             # RUL < 45 cycles
+        "min_anomaly_score": 65.0,   # Anomaly Score >= 65.0
+        "label": "MAINTENANCE REQUIRED",
+        "color": "#ff7f0e",          # Orange
+        "risk_level": "HIGH",
+        "default_urgency_window": 15, # Service within 15 cycles
+    },
+    "MONITOR": {
+        "max_rul": 75.0,             # RUL < 75 cycles
+        "min_anomaly_score": 45.0,   # Anomaly Score >= 45.0
+        "label": "MONITOR",
+        "color": "#bcbd22",          # Yellow / Olive
+        "risk_level": "MEDIUM",
+        "default_urgency_window": 30, # Re-inspect in 30 cycles
+    },
+    "HEALTHY": {
+        "min_rul": 75.0,             # RUL >= 75 cycles
+        "max_anomaly_score": 45.0,   # Anomaly Score < 45.0
+        "label": "HEALTHY",
+        "color": "#2ca02c",          # Green
+        "risk_level": "LOW",
+        "default_urgency_window": None, # Routine line service
+    },
+}
+
+# Mapping of C-MAPSS Sensor IDs to Physical Turbofan Components
+SENSOR_COMPONENT_MAPPINGS = {
+    "sensor_1": {"name": "T2 (Total Fan Inlet Temp)", "component": "Fan & Inlet Cowl", "system": "Air Intake"},
+    "sensor_2": {"name": "T24 (LPC Outlet Temp)", "component": "Low-Pressure Compressor (LPC)", "system": "Compression"},
+    "sensor_3": {"name": "T30 (HPC Outlet Temp)", "component": "High-Pressure Compressor (HPC)", "system": "Compression"},
+    "sensor_4": {"name": "T48 (LPT Outlet Temp)", "component": "Low-Pressure Turbine (LPT)", "system": "Turbine Gas Path"},
+    "sensor_5": {"name": "P2 (Fan Inlet Pressure)", "component": "Fan & Inlet Cowl", "system": "Air Intake"},
+    "sensor_6": {"name": "P15 (Bypass Duct Pressure)", "component": "Bypass Duct & Fan Exit", "system": "Secondary Flow"},
+    "sensor_7": {"name": "P30 (HPC Outlet Total Pressure)", "component": "High-Pressure Compressor (HPC)", "system": "Compression"},
+    "sensor_8": {"name": "Nf (Physical Fan Speed)", "component": "Fan Rotor & Low-Pressure Shaft", "system": "Rotary Mechanics"},
+    "sensor_9": {"name": "Nc (Physical Core Speed)", "component": "High-Pressure Core Spool", "system": "Rotary Mechanics"},
+    "sensor_10": {"name": "epr (Engine Pressure Ratio)", "component": "Turbine Expansion & Exhaust Nozzle", "system": "Gas Expansion"},
+    "sensor_11": {"name": "T50 (HPT Outlet Temp)", "component": "High-Pressure Turbine (HPT)", "system": "Turbine Gas Path"},
+    "sensor_12": {"name": "Ps30 (HPC Static Pressure)", "component": "Diffuser & Combustor Inlet", "system": "Combustion"},
+    "sensor_13": {"name": "Phi (Corrected Fan Speed)", "component": "Fan Governor & FADEC", "system": "Control & Speed"},
+    "sensor_14": {"name": "NRc (Corrected Core Speed)", "component": "Core High-Pressure Governor", "system": "Control & Speed"},
+    "sensor_15": {"name": "BPR (Bypass Ratio)", "component": "Bypass Splitter & Fan Aero", "system": "Aerodynamics"},
+    "sensor_16": {"name": "farB (Burner Fuel-Air Ratio)", "component": "Fuel Nozzles & Combustor Liner", "system": "Fuel / Combustion"},
+    "sensor_17": {"name": "htBleed (Bleed Enthalpy)", "component": "Customer Bleed & Anti-Ice System", "system": "Thermal & Bleed"},
+    "sensor_18": {"name": "Nf_dmd (Demanded Fan Speed)", "component": "FADEC Thrust Command", "system": "Avionics / FADEC"},
+    "sensor_19": {"name": "PCNfR_dmd (Demanded Corr. Fan Speed)", "component": "FADEC Control Unit", "system": "Avionics / FADEC"},
+    "sensor_20": {"name": "W31 (HPT Coolant Bleed Flow)", "component": "HPT Vane Cooling Gas Path", "system": "Cooling"},
+    "sensor_21": {"name": "W32 (LPT Coolant Bleed Flow)", "component": "LPT Blade Cooling Bleed", "system": "Cooling"},
+}
+
+DISCLAIMER_TEXT = (
+    "NOTICE: This predictive health assessment and maintenance recommendation system is a research "
+    "decision-support prototype developed for C-MAPSS turbofan data. It does not replace or supersede "
+    "certified FAA/EASA airworthiness directives, engine shop manuals (ESM), or approved airline standard operating procedures."
+)
+
+
 

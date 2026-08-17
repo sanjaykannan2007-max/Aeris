@@ -203,6 +203,143 @@ python train_rul_models.py --dataset FD001 --model xgboost
 
 ---
 
+## Person 3 – Anomaly & Fault Detection Pipeline
+
+Run Isolation Forest training, 0–100 anomaly scoring, sensor-level z-score deviation ranking, visualizations, and Person 2 integration:
+
+```bash
+# Run anomaly detection on all datasets
+python run_anomaly_detection.py --dataset all
+
+# Run anomaly detection on a single dataset
+python run_anomaly_detection.py --dataset FD001
+
+# Custom hyperparameters
+python run_anomaly_detection.py --dataset all --contamination 0.08 --n_estimators 150
+```
+
+### Anomaly Detection & Sensor Abnormality Summary
+
+| Dataset | Engines | Test Cycles | Anomalous Cycles (%) | Mean Fleet Score (0-100) | Mean Last-Cycle Score | Leading Abnormal Sensor |
+|---|---|---|---|---|---|---|
+| **FD001** | 100 | 13,096 | 573 (4.4%) | 26.4 | 30.5 | `sensor_17` (10.7% of anomalies) |
+| **FD002** | 259 | 33,991 | 4,492 (13.2%) | 34.8 | 36.1 | `sensor_12` (22.7% of anomalies) |
+| **FD003** | 100 | 16,596 | 932 (5.6%) | 20.6 | 23.2 | `sensor_13` (29.8% of anomalies) |
+| **FD004** | 248 | 41,214 | 5,594 (13.6%) | 34.8 | 34.7 | `sensor_12` (16.3% of anomalies) |
+
+### Key Anomaly Detection Outputs
+
+1. **Cycle-Level Predictions** (`outputs/predictions/anomaly_predictions_FDxxx.csv`):
+   - `anomaly_score`: Calibrated 0–100 normalized score (0 = Nominal, 100 = Critical Anomaly).
+   - `anomaly_label`: "Normal" vs "Anomalous".
+   - `anomaly_severity`: "Nominal", "Mild Drift", "Moderate Anomaly", "Severe Anomaly".
+   - `top_sensor_1..3`, `top_sensor_1..3_zscore`, `top_sensor_1..3_severity`: Ranked sensor deviation degrees.
+   - `top_abnormal_sensors`: Human-readable explanation string (e.g. `sensor_11 (+3.42σ, High deviation) | sensor_4 (+2.81σ, High deviation)`).
+
+2. **Engine Fleet Summary** (`outputs/predictions/anomaly_summary_FDxxx.csv`):
+   - `last_observed_cycle`, `final_anomaly_score`, `final_anomaly_status`, `total_anomalous_cycles`, `anomaly_cycle_ratio_pct`, `first_anomalous_cycle`, `top_degraded_sensors`.
+
+3. **Integrated Health & Maintenance Assessment** (`outputs/predictions/integrated_engine_health_FDxxx.csv`):
+   - Combines Person 2 Predicted RUL + Person 3 Anomaly Score to yield composite actionable recommendations:
+     - `CRITICAL: Immediate Maintenance & Grounding Required`
+     - `URGENT: Schedule Inspection & Maintenance`
+     - `MONITOR: Heightened Telemetry & Vibration Monitoring`
+     - `OPERATIONAL: Normal Operating Parameters`
+
+4. **Visualizations** (`outputs/plots/`):
+   - `anomaly_score_timeline_FDxxx.png`: Anomaly progression over cycles for sample engines.
+   - `anomaly_sensor_highlight_FDxxx.png`: Multi-sensor telemetry with detected anomaly bands shaded in red.
+   - `anomaly_scatter_regimes_FDxxx.png`: 2D PCA operational envelope & anomaly boundary.
+   - `anomaly_score_distribution_FDxxx.png`: Fleet-wide score histogram with threshold cutoffs.
+   - `anomaly_top_sensors_FDxxx.png`: Bar chart ranking leading abnormal sensors.
+
+
+---
+
+## Person 4 – Integration & Maintenance Recommendation Pipeline
+
+Person 4 unifies Person 2's Predicted RUL with Person 3's Anomaly Scores and abnormal sensor attributions into an authoritative **Fleet Health Assessment & Maintenance Decision Advisory**:
+
+```bash
+# Run integration and generate fleet advisory for all datasets
+python run_maintenance_advisor.py --dataset all
+
+# Run on a single dataset
+python run_maintenance_advisor.py --dataset FD001
+
+# Launch REST API server for UI integration
+python run_maintenance_advisor.py --dataset all --serve --port 8000
+```
+
+### Fleet Health Assessment & Maintenance Decision Summary (FD001–FD004)
+
+| Dataset | Fleet Engines | HEALTHY (%) | MONITOR (%) | MAINTENANCE REQUIRED (%) | CRITICAL (%) | Mean RUL (cycles) | Mean Anomaly Score |
+|---|---|---|---|---|---|---|---|
+| **FD001** | 100 | 58 (58.0%) | 16 (16.0%) | 12 (12.0%) | 14 (14.0%) | 78.6 | 30.5 |
+| **FD002** | 259 | 105 (40.5%) | 67 (25.9%) | 38 (14.7%) | 49 (18.9%) | 75.3 | 36.1 |
+| **FD003** | 100 | 55 (55.0%) | 21 (21.0%) | 15 (15.0%) | 9 (9.0%) | 79.8 | 23.2 |
+| **FD004** | 248 | 109 (44.0%) | 61 (24.6%) | 45 (18.1%) | 33 (13.3%) | 80.5 | 34.7 |
+
+### Multi-Factor Decision Framework & Explainability
+
+```
+                       ┌───────────────────────────────┐
+                       │  Predicted RUL (Person 2)     │
+                       │  Anomaly Score (Person 3)     │
+                       └──────────────┬────────────────┘
+                                      │
+                                      ▼
+             ┌──────────────────────────────────────────────────┐
+             │       Multi-Factor Health Decision Engine        │
+             └────────────────────────┬─────────────────────────┘
+                                      │
+       ┌──────────────────┬───────────┴───────────┬──────────────────┐
+       ▼                  ▼                       ▼                  ▼
+┌──────────────┐   ┌──────────────┐   ┌───────────────────────┐ ┌──────────────┐
+│   HEALTHY    │   │   MONITOR    │   │ MAINTENANCE REQUIRED  │ │   CRITICAL   │
+│ RUL ≥ 75     │   │ 45 ≤ RUL < 75│   │ 20 ≤ RUL < 45         │ │ RUL < 20     │
+│ Anom < 45    │   │ 45 ≤ Anom <65│   │ 65 ≤ Anom < 80        │ │ Anom ≥ 80    │
+└──────┬───────┘   └──────┬───────┘   └───────────┬───────────┘ └──────┬───────┘
+       │                  │                       │                    │
+       ▼                  ▼                       ▼                    ▼
+Normal Flight      Heightened Telemetry   Priority Borescope    Immediate Engine
+Operations         & Vibration Sampling   & Overhaul Inspection Grounding & Teardown
+```
+
+### Generated Files & Artifacts (Person 4)
+
+1. **Cycle-Level Integrated Telemetry** (`outputs/predictions/cycle_integrated_health_FDxxx.csv`):
+   - Full cycle-by-cycle dataset containing `engine_id`, `cycle`, `predicted_RUL`, `true_RUL`, `rul_health_score`, `anomaly_score`, `anomaly_label`, `anomaly_severity`, `top_abnormal_sensors`, `engine_health_status`, `composite_health_score`, `risk_level`, `maintenance_recommendation`, `decision_reason`, `targeted_action_items`, `impacted_components`, `urgency_window_cycles`.
+
+2. **Fleet Maintenance Advisory** (`outputs/predictions/fleet_maintenance_advisory_FDxxx.csv` & `.json`):
+   - Engine-level latest observed operational state and direct UI dashboard payload.
+
+3. **Executive Health Reports** (`outputs/reports/fleet_health_report_FDxxx.json` & `.txt`):
+   - Fleet-wide status distributions, grounding lists, and executive statistics.
+
+4. **Integration Visualizations (300 DPI)** (`outputs/plots/`):
+   - `integration_rul_timeline_FDxxx.png`: Synchronized RUL degradation vs Anomaly score timeline.
+   - `integration_health_distribution_FDxxx.png`: Fleet health stage distribution.
+   - `integration_maintenance_matrix_FDxxx.png`: Actionable maintenance directives breakdown.
+   - `integration_rul_vs_anomaly_FDxxx.png`: 2D Engine Health Risk Quadrant scatter plot.
+
+### REST API Endpoints for UI Dashboard
+
+Launch the REST server via `python run_maintenance_advisor.py --serve --port 8000`:
+
+| Endpoint | Method | Description | Example Query |
+|---|---|---|---|
+| `/health` | `GET` | Service status check | `curl http://localhost:8000/health` |
+| `/api/fleet/summary` | `GET` | Fleet health KPIs and engine list | `curl http://localhost:8000/api/fleet/summary?dataset=FD001` |
+| `/api/engine/{id}` | `GET` | Engine latest diagnostic & recommendation | `curl http://localhost:8000/api/engine/20?dataset=FD001` |
+| `/api/engine/{id}/history` | `GET` | Full historical cycle trajectory | `curl http://localhost:8000/api/engine/20/history?dataset=FD001` |
+| `/api/predict` | `POST` | Live telemetry real-time inference | `curl -X POST http://localhost:8000/api/predict -d '{"engine_id":12,"cycle":180,"predicted_rul":35,"anomaly_score":82}'` |
+
+
+
+
+---
+
 ## Data Cleaning Process
 
 The cleaning step (`src/data_cleaner.py`) performs the following checks **without blindly deleting columns**:
@@ -393,15 +530,43 @@ scaler = load_scaler("FD001")
 ### Person 3 – Anomaly / Fault Detection
 
 ```python
-from src.data_loader import load_features, load_scaler
+from src.anomaly_detector import AnomalyDetector
+from src.data_loader import load_features
 
-# Feature-engineered data with rolling stats
-train_feat = load_features("FD001", split="train")
-test_feat  = load_features("FD001", split="test")
+# 1. Load telemetry features
+test_feat = load_features("FD001", split="test")
 
-# For unsupervised anomaly detection, use sensor columns (already normalised)
-sensor_cols = [c for c in train_feat.columns if c.startswith("sensor_")]
-X = train_feat[sensor_cols]
+# 2. Load trained Isolation Forest
+detector = AnomalyDetector.load("models/anomaly/isolation_forest_FD001.joblib")
+
+# 3. Generate 0-100 anomaly scores and sensor deviations
+scored_df = detector.score_and_explain(test_feat, top_n=3)
+```
+
+### Person 4 – Health Assessment, Maintenance Decision System & UI
+
+```python
+import pandas as pd
+
+# Load the combined health & anomaly dataset
+integrated_df = pd.read_csv("outputs/predictions/integrated_engine_health_FD001.csv")
+
+# Available columns for Fleet Dashboard / Maintenance Advisory:
+# - engine_id
+# - last_observed_cycle
+# - predicted_RUL          (Person 2: Remaining Useful Life)
+# - health_score           (Person 2: 0-100% health score)
+# - health_status          (Person 2: HEALTHY / MONITOR / MAINTENANCE REQUIRED / CRITICAL)
+# - final_anomaly_score    (Person 3: 0-100 calibrated anomaly score)
+# - final_anomaly_status   (Person 3: Normal / Anomalous)
+# - final_anomaly_severity (Person 3: Nominal / Mild Drift / Moderate Anomaly / Severe Anomaly)
+# - top_degraded_sensors   (Person 3: e.g. "sensor_11, sensor_4")
+# - recommended_action     (Integrated Maintenance Recommendation)
+
+for _, row in integrated_df.head(5).iterrows():
+    print(f"Engine #{int(row['engine_id'])} | RUL: {row['predicted_RUL']:.1f} cycles | "
+          f"Anomaly: {row['final_anomaly_score']:.1f} ({row['final_anomaly_status']}) | "
+          f"Top Degraded: {row['top_degraded_sensors']} -> {row['recommended_action']}")
 ```
 
 ### Direct CSV Loading (no Python package needed)
@@ -409,9 +574,13 @@ X = train_feat[sensor_cols]
 ```python
 import pandas as pd
 
-train_df = pd.read_csv("data/processed/processed_train_FD001.csv")
-test_df  = pd.read_csv("data/processed/processed_test_FD001.csv")
+# Anomaly cycle predictions
+anom_df = pd.read_csv("outputs/predictions/anomaly_predictions_FD001.csv")
+
+# Fleet health overview
+fleet_df = pd.read_csv("outputs/predictions/integrated_engine_health_FD001.csv")
 ```
+
 
 ---
 

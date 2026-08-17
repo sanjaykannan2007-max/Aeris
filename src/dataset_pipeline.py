@@ -250,7 +250,7 @@ def _save_report(report: dict, subset: str) -> None:
 
     # JSON
     json_path = OUTPUTS_REPORTS_DIR / f"report_{subset}.json"
-    with open(json_path, "w") as f:
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
 
     # Human-readable text
@@ -289,7 +289,7 @@ def _save_report(report: dict, subset: str) -> None:
         lines.append(f"  {k:25s}: {v}")
     lines.append("")
 
-    with open(txt_path, "w") as f:
+    with open(txt_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
     print(f"  [report] Saved -> {json_path.name} + {txt_path.name}")
