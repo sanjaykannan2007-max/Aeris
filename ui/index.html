@@ -420,15 +420,138 @@
           </div>
         </section>
 
-        <!-- VIEW 9: ADMIN PANEL -->
+        <!-- VIEW 9: LIVE TELEMETRY (Streaming Sensor Feeds) -->
+        <section id="view-telemetry" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-wave-square"></i> Real-Time Engine Telemetry Feed <span class="badge-pill healthy">LIVE STREAMING ●</span></div>
+              <span class="mono" style="font-size: 0.8rem; color: var(--text-secondary);">Target: Engine AE-0001-L (AR-042)</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+              <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                  <span>S7 — HPC Outlet Temperature (°R)</span>
+                  <span id="live-s7-val" class="mono color-cyan">554.2 °R</span>
+                </div>
+                <canvas id="live-telemetry-s7-chart" style="height: 180px; width: 100%;"></canvas>
+              </div>
+
+              <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                  <span>S11 — HPC Outlet Pressure (psia)</span>
+                  <span id="live-s11-val" class="mono color-cyan">47.8 psia</span>
+                </div>
+                <canvas id="live-telemetry-s11-chart" style="height: 180px; width: 100%;"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 10: FAULT DIAGNOSTICS -->
+        <section id="view-diagnostics" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-microchip"></i> Subsystem Fault Diagnostics & Sensor Z-Scores</div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+              <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.75rem;"><i class="fa-solid fa-triangle-exclamation" style="color: var(--color-warning);"></i> Top Abnormal Sensor Deviations</div>
+                <div class="aeris-table-wrap">
+                  <table class="aeris-table">
+                    <thead>
+                      <tr><th>Sensor</th><th>Measurement</th><th>Z-Score</th><th>Trend</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="mono">Sensor 7</td><td>HPC Outlet Temp</td><td class="mono color-critical">+3.42σ</td><td><span class="badge-pill critical">Critical</span></td></tr>
+                      <tr><td class="mono">Sensor 11</td><td>HPC Outlet Pressure</td><td class="mono color-warning">+2.85σ</td><td><span class="badge-pill warning">Elevated</span></td></tr>
+                      <tr><td class="mono">Sensor 3</td><td>HPT Outlet Temp</td><td class="mono color-warning">+2.10σ</td><td><span class="badge-pill warning">Elevated</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style="background: rgba(168, 85, 247, 0.08); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid rgba(168, 85, 247, 0.3);">
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-violet); margin-bottom: 0.5rem;"><i class="fa-solid fa-brain"></i> Fault Hypothesis & Localization</div>
+                <p style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.6; margin-bottom: 1rem;">
+                  Primary Fault Hypothesis: <strong>High-Pressure Compressor (HPC) Efficiency Degradation</strong>.<br>
+                  Confidence Rating: <strong>88.4%</strong>.<br>
+                  Contributing factors include thermal buildup at HPC outlet (S7) combined with pressure head deviation (S11).
+                </p>
+                <div class="badge-pill warning">Inspection Recommended within 15 cycles</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 11: MODEL ANALYTICS -->
+        <section id="view-analytics" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-chart-line"></i> Model Performance & Benchmark Analytics</div>
+            </div>
+            
+            <div class="kpi-row">
+              <div class="kpi-panel">
+                <div class="kpi-info"><span class="kpi-title">FD001 RMSE</span><span class="kpi-val color-cyan">14.82</span><span class="kpi-sub">Random Forest RUL</span></div>
+              </div>
+              <div class="kpi-panel">
+                <div class="kpi-info"><span class="kpi-title">FD001 MAE</span><span class="kpi-val color-blue">11.34</span><span class="kpi-sub">Mean Absolute Error</span></div>
+              </div>
+              <div class="kpi-panel">
+                <div class="kpi-info"><span class="kpi-title">NASA Score</span><span class="kpi-val color-healthy">284.1</span><span class="kpi-sub">Asymmetric Penalty</span></div>
+              </div>
+              <div class="kpi-panel">
+                <div class="kpi-info"><span class="kpi-title">Anomaly Lead</span><span class="kpi-val color-warning">28.5</span><span class="kpi-sub">Cycles before failure</span></div>
+              </div>
+            </div>
+
+            <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+              <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem;"><i class="fa-solid fa-chart-area"></i> Predicted vs. Actual RUL Evaluation</div>
+              <canvas id="model-analytics-chart" style="height: 220px; width: 100%;"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 12: USER PROFILE -->
+        <section id="view-profile" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-user-gear"></i> User Profile & Access Preferences</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem;">
+              <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-default); text-align: center;">
+                <div style="width: 64px; height: 64px; background: var(--bg-panel); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: var(--color-cyan); margin: 0 auto 1rem auto; border: 1px solid var(--border-accent);">AV</div>
+                <h3 id="profile-name">Dr. Alex Vance</h3>
+                <p id="profile-role" class="badge-pill monitor" style="margin-top: 0.4rem;">FLIGHT ENGINEER</p>
+              </div>
+              <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <div class="form-group"><label>Email Address</label><input type="text" id="profile-email" class="form-input" value="engineer@aeris.aero" readonly></div>
+                <div class="form-group"><label>Assigned Aircraft Assets</label><input type="text" class="form-input" value="AR-042, AR-089" readonly></div>
+                <div class="form-group"><label>Role Access Scope</label><input type="text" class="form-input" value="Telemetry, Diagnostics, Simulator, Work Orders" readonly></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 13: ADMIN PANEL -->
         <section id="view-admin" class="view-pane">
           <div class="panel">
             <div class="panel-header">
-              <div class="panel-title"><i class="fa-solid fa-user-shield"></i> AERIS Administration & Audit Control</div>
+              <div class="panel-title"><i class="fa-solid fa-user-shield"></i> AERIS Administration & User Management</div>
             </div>
-            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Role-Based User Management and System Audit Logs.</p>
-            <div class="mono" style="background: var(--bg-card); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
-              [AUDIT LOG] System initialized and seeded with 20 demo aircraft profiles and 100 C-MAPSS engines.
+            <div class="aeris-table-wrap" style="margin-bottom: 1.5rem;">
+              <table class="aeris-table">
+                <thead>
+                  <tr><th>User Email</th><th>Full Name</th><th>Role</th><th>Assigned Aircraft</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td class="mono">admin@aeris.aero</td><td>System Administrator</td><td><span class="badge-pill critical">ADMIN</span></td><td class="mono">ALL</td><td><span class="badge-pill healthy">Active</span></td></tr>
+                  <tr><td class="mono">maint.mgr@aeris.aero</td><td>Captain Sarah Jenkins</td><td><span class="badge-pill warning">MAINT_MGR</span></td><td class="mono">ALL</td><td><span class="badge-pill healthy">Active</span></td></tr>
+                  <tr><td class="mono">engineer@aeris.aero</td><td>Dr. Alex Vance</td><td><span class="badge-pill monitor">ENGINEER</span></td><td class="mono">AR-042, AR-089</td><td><span class="badge-pill healthy">Active</span></td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </section>

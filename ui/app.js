@@ -40,6 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewId === 'view-maintenance') loadWorkOrders();
     if (viewId === 'view-alerts') loadAlerts();
     if (viewId === 'view-engines') loadEngineInspector(state.selectedEngineId);
+    if (viewId === 'view-telemetry') initLiveTelemetryCharts();
+    if (viewId === 'view-analytics') initModelAnalyticsChart();
   }
 
   navLinks.forEach(link => {
@@ -252,17 +254,94 @@ document.addEventListener('DOMContentLoaded', () => {
       data: {
         labels: labels,
         datasets: [
-          { label: 'Predicted RUL (Cycles)', data: ruls, borderColor: '#0284c7', borderWidth: 2, yAxisID: 'y' },
-          { label: 'Anomaly Score (0-100)', data: anoms, borderColor: '#ef4444', borderWidth: 2, yAxisID: 'y1' }
+          { label: 'Predicted RUL (Cycles)', data: ruls, borderColor: '#0284c7', borderWidth: 2, pointRadius: 1, yAxisID: 'y' },
+          { label: 'Anomaly Score (0-100)', data: anoms, borderColor: '#ef4444', borderWidth: 2, pointRadius: 1, yAxisID: 'y1' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 400 },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+          y: { position: 'left', grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+          y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#ef4444' } }
+        }
+      }
+    });
+  }
+
+  // 7b. Live Telemetry Streaming Charts Setup
+  let s7Chart = null, s11Chart = null, modelChart = null;
+
+  function initLiveTelemetryCharts() {
+    const s7Ctx = document.getElementById('live-telemetry-s7-chart');
+    const s11Ctx = document.getElementById('live-telemetry-s11-chart');
+    if (!s7Ctx || !s11Ctx) return;
+
+    if (s7Chart) s7Chart.destroy();
+    if (s11Chart) s11Chart.destroy();
+
+    const labels = Array.from({length: 20}, (_, i) => `t-${20-i}s`);
+    const s7Data = Array.from({length: 20}, () => 550 + Math.random() * 8);
+    const s11Data = Array.from({length: 20}, () => 47 + Math.random() * 2);
+
+    s7Chart = new Chart(s7Ctx.getContext('2d'), {
+      type: 'line',
+      data: { labels, datasets: [{ label: 'S7 Temp (°R)', data: s7Data, borderColor: '#06b6d4', borderWidth: 2, fill: true, backgroundColor: 'rgba(6,182,212,0.1)' }] },
+      options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { display: false }, y: { ticks: { color: '#94a3b8' } } } }
+    });
+
+    s11Chart = new Chart(s11Ctx.getContext('2d'), {
+      type: 'line',
+      data: { labels, datasets: [{ label: 'S11 Press (psia)', data: s11Data, borderColor: '#0284c7', borderWidth: 2, fill: true, backgroundColor: 'rgba(2,132,199,0.1)' }] },
+      options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { display: false }, y: { ticks: { color: '#94a3b8' } } } }
+    });
+
+    // Continuously stream data points without expanding container
+    setInterval(() => {
+      if (s7Chart && s11Chart) {
+        const nextS7 = 550 + Math.random() * 10;
+        const nextS11 = 47 + Math.random() * 2.5;
+
+        s7Chart.data.datasets[0].data.shift();
+        s7Chart.data.datasets[0].data.push(nextS7);
+        s7Chart.update();
+
+        s11Chart.data.datasets[0].data.shift();
+        s11Chart.data.datasets[0].data.push(nextS11);
+        s11Chart.update();
+
+        document.getElementById('live-s7-val').textContent = `${nextS7.toFixed(1)} °R`;
+        document.getElementById('live-s11-val').textContent = `${nextS11.toFixed(1)} psia`;
+      }
+    }, 1500);
+  }
+
+  function initModelAnalyticsChart() {
+    const ctx = document.getElementById('model-analytics-chart');
+    if (!ctx) return;
+    if (modelChart) modelChart.destroy();
+
+    const engines = Array.from({length: 30}, (_, i) => `Eng #${i+1}`);
+    const actualRUL = Array.from({length: 30}, () => Math.floor(Math.random() * 100) + 10);
+    const predRUL = actualRUL.map(val => val + (Math.random() * 12 - 6));
+
+    modelChart = new Chart(ctx.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: engines,
+        datasets: [
+          { label: 'Actual RUL', data: actualRUL, backgroundColor: 'rgba(2, 132, 199, 0.6)' },
+          { label: 'Predicted RUL', data: predRUL, backgroundColor: 'rgba(6, 182, 212, 0.9)' }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-          y: { position: 'left', grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-          y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#ef4444' } }
+          x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
         }
       }
     });
