@@ -39,7 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewId === 'view-aircraft') loadAircraftData();
     if (viewId === 'view-maintenance') loadWorkOrders();
     if (viewId === 'view-alerts') loadAlerts();
-    if (viewId === 'view-engines') loadEngineInspector(state.selectedEngineId);
+    if (viewId === 'view-engines') {
+      loadEngineInspector(state.selectedEngineId);
+      setTimeout(init3DTurbofanEngine, 100);
+    }
     if (viewId === 'view-telemetry') initLiveTelemetryCharts();
     if (viewId === 'view-analytics') initModelAnalyticsChart();
   }
@@ -88,7 +91,43 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFleetData();
   });
 
-  // 4. Auth & Quick Login
+  // 4. Auth, Tab Switcher & Create Account Signup
+  window.switchAuthTab = (tab) => {
+    const btnSignin = document.getElementById('tab-auth-signin');
+    const btnSignup = document.getElementById('tab-auth-signup');
+    const formSignin = document.getElementById('auth-form');
+    const formSignup = document.getElementById('auth-form-signup');
+
+    if (tab === 'signin') {
+      btnSignin.classList.add('active');
+      btnSignin.style.borderBottom = '2px solid var(--color-cyan)';
+      btnSignup.classList.remove('active');
+      btnSignup.style.borderBottom = 'none';
+      formSignin.style.display = 'block';
+      formSignup.style.display = 'none';
+    } else {
+      btnSignup.classList.add('active');
+      btnSignup.style.borderBottom = '2px solid var(--color-cyan)';
+      btnSignin.classList.remove('active');
+      btnSignin.style.borderBottom = 'none';
+      formSignup.style.display = 'block';
+      formSignin.style.display = 'none';
+    }
+  };
+
+  window.handleSignup = (e) => {
+    e.preventDefault();
+    const name = document.getElementById('signup-name').value;
+    const email = document.getElementById('signup-email').value;
+    const role = document.getElementById('signup-role').value;
+
+    document.getElementById('screen-auth').style.display = 'none';
+    document.getElementById('app-platform').style.display = 'flex';
+    document.getElementById('user-display-name').textContent = name;
+    document.getElementById('user-display-role').textContent = role;
+    loadFleetData();
+  };
+
   window.quickLogin = (email, pwd) => {
     document.getElementById('auth-email').value = email;
     document.getElementById('auth-password').value = pwd;
@@ -123,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
         alert(data.error || 'Login failed.');
       }
     } catch (err) {
-      // Offline / Hackathon direct login fallback
       document.getElementById('screen-auth').style.display = 'none';
       document.getElementById('app-platform').style.display = 'flex';
       loadFleetData();
@@ -133,6 +171,130 @@ document.addEventListener('DOMContentLoaded', () => {
   window.logout = () => {
     document.getElementById('app-platform').style.display = 'none';
     document.getElementById('screen-auth').style.display = 'flex';
+  };
+
+  // 4b. Three.js Rotatable 3D Turbofan Model Renderer
+  let scene3d, camera3d, renderer3d, engineGroup;
+  let isDragging = false, previousMousePosition = { x: 0, y: 0 };
+
+  function init3DTurbofanEngine() {
+    const container = document.getElementById('threejs-container');
+    if (!container || scene3d) return;
+
+    scene3d = new THREE.Scene();
+    scene3d.background = new THREE.Color(0x05070c);
+
+    camera3d = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera3d.position.set(0, 5, 25);
+
+    renderer3d = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer3d.setSize(container.clientWidth, container.clientHeight);
+    renderer3d.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer3d.domElement);
+
+    // Ambient & Directional Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene3d.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0x06b6d4, 1.2);
+    dirLight1.position.set(10, 15, 10);
+    scene3d.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0xef4444, 0.8);
+    dirLight2.position.set(-10, -5, -10);
+    scene3d.add(dirLight2);
+
+    // Build Detailed Turbofan Subsystems Group
+    engineGroup = new THREE.Group();
+
+    // 1. Fan Casing (Outer Cylinder)
+    const casingGeo = new THREE.CylinderGeometry(4.2, 4.0, 14, 32, 1, true);
+    const casingMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, opacity: 0.35, transparent: true, side: THREE.DoubleSide });
+    const casing = new THREE.Mesh(casingGeo, casingMat);
+    casing.rotation.z = Math.PI / 2;
+    engineGroup.add(casing);
+
+    // 2. Central Shaft Core
+    const shaftGeo = new THREE.CylinderGeometry(0.5, 0.5, 15, 16);
+    const shaftMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 });
+    const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+    shaft.rotation.z = Math.PI / 2;
+    engineGroup.add(shaft);
+
+    // 3. Front Fan Blades (Stage 1) - Cyan Highlight
+    const fanGeo = new THREE.ConeGeometry(3.8, 1.5, 24);
+    const fanMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, metalness: 0.6, roughness: 0.3 });
+    const fan = new THREE.Mesh(fanGeo, fanMat);
+    fan.rotation.z = -Math.PI / 2;
+    fan.position.x = -6;
+    engineGroup.add(fan);
+
+    // 4. FAULTY High Pressure Compressor (HPC Stage) - HIGHLIGHTED CRITICAL RED WITH GLOW
+    const hpcGeo = new THREE.CylinderGeometry(2.5, 3.2, 3.5, 24);
+    const hpcMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2, emissive: 0x7f0000, emissiveIntensity: 0.6 });
+    const hpc = new THREE.Mesh(hpcGeo, hpcMat);
+    hpc.rotation.z = Math.PI / 2;
+    hpc.position.x = -2.5;
+    engineGroup.add(hpc);
+
+    // 5. Combustor Chamber (Stage 3) - Amber Highlight
+    const combGeo = new THREE.CylinderGeometry(2.4, 2.4, 2.5, 24);
+    const combMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0x9a3412, emissiveIntensity: 0.4 });
+    const comb = new THREE.Mesh(combGeo, combMat);
+    comb.rotation.z = Math.PI / 2;
+    comb.position.x = 0.8;
+    engineGroup.add(comb);
+
+    // 6. High Pressure & Low Pressure Turbine (LPT/HPT Stage 4) - Blue Highlight
+    const turbGeo = new THREE.CylinderGeometry(3.0, 2.2, 3.5, 24);
+    const turbMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.7, roughness: 0.3 });
+    const turb = new THREE.Mesh(turbGeo, turbMat);
+    turb.rotation.z = Math.PI / 2;
+    turb.position.x = 4.2;
+    engineGroup.add(turb);
+
+    // Slightly tilt engine group for 3D perspective
+    engineGroup.rotation.y = Math.PI / 6;
+    engineGroup.rotation.x = Math.PI / 12;
+    scene3d.add(engineGroup);
+
+    // Mouse Controls for 3D Rotation
+    const dom = renderer3d.domElement;
+    dom.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    });
+
+    dom.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const deltaMove = { x: e.clientX - previousMousePosition.x, y: e.clientY - previousMousePosition.y };
+      engineGroup.rotation.y += deltaMove.x * 0.01;
+      engineGroup.rotation.x += deltaMove.y * 0.01;
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Animation Render Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      if (!isDragging && engineGroup) {
+        engineGroup.rotation.y += 0.005; // Continuous subtle rotation
+      }
+      renderer3d.render(scene3d, camera3d);
+    }
+    animate();
+  }
+
+  window.rotate3DModel = (dir) => {
+    if (!engineGroup) return;
+    if (dir === 'left') engineGroup.rotation.y -= 0.4;
+    if (dir === 'right') engineGroup.rotation.y += 0.4;
+  };
+
+  window.reset3DModel = () => {
+    if (!engineGroup) return;
+    engineGroup.rotation.set(Math.PI / 12, Math.PI / 6, 0);
   };
 
   // 5. Load Monitored Fleet Data

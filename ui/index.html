@@ -11,8 +11,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Chart.js CDN -->
+  <!-- Chart.js & Three.js 3D Rendering CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -27,13 +28,17 @@
       </div>
       <div class="auth-tagline">Predict. Diagnose. Prevent.</div>
       <p class="auth-description">
-        Aircraft Engine Reliability & Intelligence System — Next-generation aerospace predictive maintenance operations platform powering real-time fleet health, RUL forecasting, and fault diagnostics.
+        Aircraft Engine Reliability & Intelligence System — Next-generation aerospace predictive maintenance operations platform powering real-time fleet health, RUL forecasting, 3D fault diagnostics, and automated work orders.
       </p>
     </div>
     <div class="auth-card-pane">
       <div class="auth-card">
-        <h2>Mission Control Sign In</h2>
-        <p>Access AERIS Fleet Intelligence Dashboard</p>
+        <div style="display: flex; gap: 1rem; border-bottom: 1px solid var(--border-default); margin-bottom: 1.5rem;">
+          <button id="tab-auth-signin" class="nav-link active" style="padding: 0.5rem 0; border-left: none; border-bottom: 2px solid var(--color-cyan);" onclick="switchAuthTab('signin')">Sign In</button>
+          <button id="tab-auth-signup" class="nav-link" style="padding: 0.5rem 0; border-left: none;" onclick="switchAuthTab('signup')">Create Account</button>
+        </div>
+
+        <!-- Sign In Form -->
         <form id="auth-form">
           <div class="form-group">
             <label for="auth-email">Email Address</label>
@@ -44,6 +49,32 @@
             <input type="password" id="auth-password" class="form-input" value="Engineer@123" required>
           </div>
           <button type="submit" class="btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Sign In to AERIS</button>
+        </form>
+
+        <!-- Create Account Form (Hidden by default) -->
+        <form id="auth-form-signup" style="display: none;" onsubmit="handleSignup(event)">
+          <div class="form-group">
+            <label for="signup-name">Full Name</label>
+            <input type="text" id="signup-name" class="form-input" placeholder="e.g. Captain Jane Doe" required>
+          </div>
+          <div class="form-group">
+            <label for="signup-email">Email Address</label>
+            <input type="email" id="signup-email" class="form-input" placeholder="jane.doe@aeris.aero" required>
+          </div>
+          <div class="form-group">
+            <label for="signup-role">Role Assignment</label>
+            <select id="signup-role" class="form-input">
+              <option value="ENGINEER">Flight Engineer</option>
+              <option value="MAINTENANCE_MANAGER">Maintenance Manager</option>
+              <option value="ANALYST">Data Analyst</option>
+              <option value="ADMIN">System Administrator</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="signup-password">Password</label>
+            <input type="password" id="signup-password" class="form-input" placeholder="••••••••" required>
+          </div>
+          <button type="submit" class="btn-primary"><i class="fa-solid fa-user-plus"></i> Create AERIS Account</button>
         </form>
 
         <div class="demo-login-shortcuts">
@@ -291,11 +322,21 @@
               </div>
             </div>
 
-            <!-- Turbofan Schematic Render & AI Intelligence Explanation -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <!-- 3D Rotatable Turbofan Engine Model & AI Intelligence Explanation -->
+            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem;">
               <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-default); text-align: center;">
-                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.75rem; text-align: left;"><i class="fa-solid fa-jet-fighter"></i> Subsystem Structural Cutaway</div>
-                <img src="aeris_turbofan_bg.jpg" alt="Turbofan Cutaway" style="width: 100%; max-height: 200px; object-fit: contain; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                  <span><i class="fa-solid fa-cube" style="color: var(--color-cyan);"></i> Interactive 3D Turbofan Model (Click & Drag to Rotate)</span>
+                  <span class="mono" style="font-size: 0.72rem; color: var(--color-critical);"><i class="fa-solid fa-circle"></i> High Pressure Compressor (HPC) Fault Highlighted</span>
+                </div>
+                <div id="threejs-container" style="width: 100%; height: 240px; position: relative; border-radius: var(--radius-md); overflow: hidden; background: rgba(5, 7, 12, 0.8); cursor: grab;">
+                  <!-- Three.js Canvas appended dynamically -->
+                </div>
+                <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 0.5rem;">
+                  <button class="btn-demo-shortcut" onclick="rotate3DModel('left')">↺ Rotate Left</button>
+                  <button class="btn-demo-shortcut" onclick="rotate3DModel('right')">↻ Rotate Right</button>
+                  <button class="btn-demo-shortcut" onclick="reset3DModel()">⌂ Reset View</button>
+                </div>
               </div>
               <div style="background: rgba(168, 85, 247, 0.08); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid rgba(168, 85, 247, 0.3);">
                 <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-violet); margin-bottom: 0.5rem;"><i class="fa-solid fa-brain"></i> AERIS INTELLIGENCE — AI Diagnostic Summary</div>
