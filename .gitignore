@@ -1,0 +1,28 @@
+# Python bytecode / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Data outputs & large generated datasets
+data/cleaned/
+data/processed/
+data/features/
+models/scalers/
+outputs/plots/
+outputs/reports/
+outputs/statistics/
+
+# Environments & IDEs
+.venv/
+venv/
+ENV/
+env/
+.vscode/
+.idea/
+.ipynb_checkpoints/
+
+# System / OS files
+.DS_Store
+Thumbs.db
