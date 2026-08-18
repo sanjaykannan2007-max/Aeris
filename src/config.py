@@ -247,5 +247,154 @@ DISCLAIMER_TEXT = (
     "certified FAA/EASA airworthiness directives, engine shop manuals (ESM), or approved airline standard operating procedures."
 )
 
+# ---------------------------------------------------------------------------
+# Regime & Multi-Condition Normalization Configuration
+# ---------------------------------------------------------------------------
+N_REGIMES = {
+    "FD001": 1,
+    "FD002": 6,
+    "FD003": 1,
+    "FD004": 6,
+}
+
+# ---------------------------------------------------------------------------
+# Subsystem & Protocol Mapping
+# ---------------------------------------------------------------------------
+SENSOR_SUBSYSTEM = {
+    "sensor_1": "Air Intake", "sensor_2": "Compressor", "sensor_3": "Compressor",
+    "sensor_4": "Turbine", "sensor_5": "Air Intake", "sensor_6": "Secondary Flow",
+    "sensor_7": "Compressor", "sensor_8": "Mechanical", "sensor_9": "Mechanical",
+    "sensor_10": "Turbine", "sensor_11": "Turbine", "sensor_12": "Combustion",
+    "sensor_13": "Control & Speed", "sensor_14": "Control & Speed", "sensor_15": "Aerodynamics",
+    "sensor_16": "Combustion", "sensor_17": "Thermal", "sensor_18": "Control & Speed",
+    "sensor_19": "Control & Speed", "sensor_20": "Cooling", "sensor_21": "Cooling",
+    "T2": "Air Intake", "T24": "Compressor", "T30": "Compressor", "T48": "Turbine",
+    "P2": "Air Intake", "P15": "Secondary Flow", "P30": "Compressor", "Nf": "Mechanical",
+    "Nc": "Mechanical", "epr": "Turbine", "T50": "Turbine", "Ps30": "Combustion",
+    "Phi": "Control & Speed", "NRc": "Control & Speed", "BPR": "Aerodynamics",
+    "farB": "Combustion", "htBleed": "Thermal", "Nf_dmd": "Control & Speed",
+    "PCNfR_dmd": "Control & Speed", "W31": "Cooling", "W32": "Cooling",
+}
+
+MAINTENANCE_PROTOCOLS = {
+    "Compressor": {
+        "code": "TASK-72-30-01",
+        "title": "HPC borescope inspection & stage-1/2 blade wash",
+        "labour_hours": 12.0,
+        "aog_risk": "high",
+        "recommended_window_days": 7,
+    },
+    "Turbine": {
+        "code": "TASK-72-50-04",
+        "title": "HPT shroud tile inspection & NGV thermal check",
+        "labour_hours": 18.0,
+        "aog_risk": "high",
+        "recommended_window_days": 5,
+    },
+    "Thermal": {
+        "code": "TASK-75-21-00",
+        "title": "Bleed valve actuator test & duct insulation audit",
+        "labour_hours": 6.0,
+        "aog_risk": "medium",
+        "recommended_window_days": 14,
+    },
+    "Combustion": {
+        "code": "TASK-72-40-02",
+        "title": "Combustor fuel nozzle flow test & liner inspection",
+        "labour_hours": 14.0,
+        "aog_risk": "high",
+        "recommended_window_days": 7,
+    },
+    "Mechanical": {
+        "code": "TASK-72-00-11",
+        "title": "Main bearing oil chip detector & vibration audit",
+        "labour_hours": 8.0,
+        "aog_risk": "medium",
+        "recommended_window_days": 10,
+    },
+    "Cooling": {
+        "code": "TASK-75-30-01",
+        "title": "Turbine cooling air circuit flow check & valve overhaul",
+        "labour_hours": 10.0,
+        "aog_risk": "medium",
+        "recommended_window_days": 10,
+    },
+    "Air Intake": {
+        "code": "TASK-71-11-01",
+        "title": "Inlet cowl lip anti-ice & fan acoustic panel audit",
+        "labour_hours": 4.0,
+        "aog_risk": "low",
+        "recommended_window_days": 21,
+    },
+    "Secondary Flow": {
+        "code": "TASK-75-10-00",
+        "title": "Bypass duct seal inspection & pressure tap calibration",
+        "labour_hours": 5.0,
+        "aog_risk": "low",
+        "recommended_window_days": 21,
+    },
+    "Control & Speed": {
+        "code": "TASK-73-20-00",
+        "title": "FADEC sensor harness continuity & speed sensor test",
+        "labour_hours": 4.0,
+        "aog_risk": "low",
+        "recommended_window_days": 21,
+    },
+    "Aerodynamics": {
+        "code": "TASK-72-21-00",
+        "title": "Fan blade variable pitch mechanism & acoustic liner check",
+        "labour_hours": 8.0,
+        "aog_risk": "medium",
+        "recommended_window_days": 14,
+    },
+    "Unclassified": {
+        "code": "TASK-70-00-00",
+        "title": "General line inspection & telemetry re-calibration",
+        "labour_hours": 4.0,
+        "aog_risk": "low",
+        "recommended_window_days": 14,
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Business & Financial Model Configuration
+# ---------------------------------------------------------------------------
+COST_MODEL = {
+    "planned_shop_visit": 150000.0,       # Base cost of planned overhaul ($)
+    "unplanned_removal": 450000.0,         # Emergency removal & teardown ($)
+    "aog_per_day": 85000.0,                # Aircraft Grounded loss per day ($)
+    "mean_aog_days_unplanned": 2.5,        # Avg days grounded for unplanned event
+    "secondary_damage_probability": 0.35,  # Chance of collateral engine damage
+    "secondary_damage_cost": 220000.0,     # Cost of secondary damage ($)
+    "cancellation_cost": 40000.0,          # Passenger rebooking & logistics ($)
+    "labour_rate_per_hour": 185.0,         # Certified technician rate ($/hr)
+    "cycles_per_day": 2.0,                 # Avg flight cycles per day
+}
+
+SENSOR_MEANING = {
+    "sensor_1": "T2 - Fan inlet temp (°R)",
+    "sensor_2": "T24 - LPC outlet temp (°R)",
+    "sensor_3": "T30 - HPC outlet temp (°R)",
+    "sensor_4": "T48 - LPT outlet temp (°R)",
+    "sensor_5": "P2 - Fan inlet pressure (psia)",
+    "sensor_6": "P15 - Bypass duct pressure (psia)",
+    "sensor_7": "P30 - HPC outlet total pressure (psia)",
+    "sensor_8": "Nf - Physical fan speed (rpm)",
+    "sensor_9": "Nc - Physical core speed (rpm)",
+    "sensor_10": "epr - Engine pressure ratio",
+    "sensor_11": "T50 - HPT outlet temp (°R)",
+    "sensor_12": "Ps30 - HPC static pressure (psia)",
+    "sensor_13": "Phi - Corrected fan speed (rpm)",
+    "sensor_14": "NRc - Corrected core speed (rpm)",
+    "sensor_15": "BPR - Bypass ratio",
+    "sensor_16": "farB - Burner fuel-air ratio",
+    "sensor_17": "htBleed - Bleed enthalpy",
+    "sensor_18": "Nf_dmd - Demanded fan speed (rpm)",
+    "sensor_19": "PCNfR_dmd - Demanded corrected fan speed (rpm)",
+    "sensor_20": "W31 - HPT coolant bleed flow (lbm/s)",
+    "sensor_21": "W32 - LPT coolant bleed flow (lbm/s)",
+}
+
+
 
 

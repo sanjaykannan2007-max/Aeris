@@ -23,6 +23,8 @@ import traceback
 from pathlib import Path
 from typing import Dict, Any, List
 
+import matplotlib
+matplotlib.use("Agg")  # Non-interactive backend for server-side rendering
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -93,8 +95,8 @@ def parse_args() -> argparse.Namespace:
 
 def load_or_generate_features(subset: str, max_rul: int, window_size: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Load feature CSVs or trigger Person 1 pipeline if missing."""
-    train_feat_path = DATA_FEATURES_DIR / f"features_{subset}_train.csv"
-    test_feat_path  = DATA_FEATURES_DIR / f"features_{subset}_test.csv"
+    train_feat_path = DATA_FEATURES_DIR / f"features_train_{subset}.csv"
+    test_feat_path  = DATA_FEATURES_DIR / f"features_test_{subset}.csv"
 
     if train_feat_path.exists() and test_feat_path.exists():
         print(f"  [data] Loading existing feature files for {subset}...")

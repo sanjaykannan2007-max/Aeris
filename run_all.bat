@@ -10,7 +10,7 @@ set "PROJECT_DIR=%~dp0"
 cd /d "%PROJECT_DIR%"
 
 if "%~1"=="" (
-    set "CMD_DATASET=FD001"
+    set "CMD_DATASET=all"
 ) else (
     set "CMD_DATASET=%~1"
 )
@@ -24,7 +24,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo.
 
 echo [2/4] Training RUL Prediction Models (%CMD_DATASET%)...
-python train_rul_models.py --dataset %CMD_DATASET% --model both
+python train_rul_models.py --dataset %CMD_DATASET% --model random_forest
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] RUL model training failed.
     exit /b %ERRORLEVEL%
@@ -39,7 +39,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo.
 
-echo [4/4] Generating Fleet Health Advisory & Launching Dashboard Server...
+echo [4/4] Generating Fleet Health Advisory ^& Launching Dashboard Server...
 python run_maintenance_advisor.py --dataset %CMD_DATASET% --serve --port 8000
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Maintenance advisor execution failed.

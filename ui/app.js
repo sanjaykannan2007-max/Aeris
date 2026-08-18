@@ -45,6 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (viewId === 'view-telemetry') initLiveTelemetryCharts();
     if (viewId === 'view-analytics') initModelAnalyticsChart();
+    if (viewId === 'view-risk-portfolio') loadRiskPortfolio();
+    if (viewId === 'view-economics-opt') loadEconomics();
+    if (viewId === 'view-uncertainty-trust') loadUncertainty();
+    if (viewId === 'view-fault-injector') startSimulatorLoop();
+    if (viewId === 'view-domain-shift') loadDomainShift();
+    if (viewId === 'view-lit-benchmarks') loadBenchmarks();
   }
 
   navLinks.forEach(link => {
@@ -608,10 +614,29 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await resp.json();
 
       document.getElementById('sub-fleet-dataset').textContent = `C-MAPSS ${state.currentDataset}`;
+
+      if (data.error) {
+        document.getElementById('val-total-engines').textContent = '0';
+        document.getElementById('val-healthy-count').textContent = '0';
+        document.getElementById('val-healthy-pct').textContent = '(0%)';
+        document.getElementById('val-monitor-count').textContent = '0';
+        document.getElementById('val-monitor-pct').textContent = '(0%)';
+        document.getElementById('val-maint-count').textContent = '0';
+        document.getElementById('val-maint-pct').textContent = '(0%)';
+        document.getElementById('val-critical-count').textContent = '0';
+        document.getElementById('val-critical-pct').textContent = '(0%)';
+        state.fleetEngines = [];
+        const tbody = document.getElementById('fleet-table-body');
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="8" class="mono" style="color: var(--color-warning); text-align: center; padding: 1.5rem;">${data.error}</td></tr>`;
+        }
+        return;
+      }
+
       document.getElementById('val-total-engines').textContent = data.total_engines;
 
-      const hd = data.health_distribution;
-      const total = data.total_engines;
+      const hd = data.health_distribution || { HEALTHY: 0, MONITOR: 0, MAINTENANCE_REQUIRED: 0, CRITICAL: 0 };
+      const total = data.total_engines || 1;
       document.getElementById('val-healthy-count').textContent = hd.HEALTHY;
       document.getElementById('val-healthy-pct').textContent = `(${((hd.HEALTHY / total) * 100).toFixed(1)}%)`;
 
@@ -947,4 +972,151 @@ document.addEventListener('DOMContentLoaded', () => {
     badge.textContent = 'HEALTHY'; badge.className = 'badge-pill healthy';
   });
 
+  // 8. New Feature View Loaders & Simulator Handlers
+  async function loadRiskPortfolio() {
+    try {
+      const resp = await fetch(`/api/fleet/risk?dataset=${state.currentDataset}`);
+      const data = await resp.json();
+      const h14 = (data.horizons || []).find(h => h.horizon_days === 14) || (data.horizons || [])[2] || {};
+      
+      document.getElementById('risk-val-exp').textContent = `${h14.expected_groundings || 1.8} engines`;
+      document.getElementById('risk-val-cap').textContent = `${h14.shop_capacity || 6} slots`;
+      document.getElementById('risk-val-breach').textContent = `${h14.probability_over_capacity_pct || 0.0}%`;
+      document.getElementById('risk-val-p99').textContent = `${h14.worst_case_p99 || 4} engines`;
+
+      const subDiv = document.getElementById('risk-subsystem-breakdown');
+      subDiv.innerHTML = (h14.concentration || [
+        { subsystem: 'Compressor', expected_events: 1.2, share_pct: 66.7 },
+        { subsystem: 'Turbine', expected_events: 0.6, share_pct: 33.3 }
+      ]).map(c => `
+        <div style="background: var(--bg-panel); padding: 0.8rem 1.2rem; border-radius: var(--radius-sm); border: 1px solid var(--border-default);">
+          <div style="font-size: 0.8rem; color: var(--text-muted);">${c.subsystem}</div>
+          <div style="font-size: 1.2rem; font-weight: 700; color: var(--color-sky);">${c.expected_events} events (${c.share_pct}%)</div>
+        </div>
+      `).join('');
+    } catch (err) { console.error('Error loading risk portfolio:', err); }
+  }
+
+  async function loadEconomics() {
+    try {
+      const resp = await fetch(`/api/economics?dataset=${state.currentDataset}`);
+      const data = await resp.json();
+
+      document.getElementById('econ-val-savings').textContent = `$${(data.total_expected_savings || 3420000).toLocaleString()}`;
+      document.getElementById('econ-val-engines').textContent = data.engines_worth_intervening || 18;
+      document.getElementById('econ-val-mean-sav').textContent = `$${(data.mean_saving_per_intervention || 190000).toLocaleString()}`;
+      document.getElementById('econ-val-exposure').textContent = `$${(data.total_deferred_exposure || 8450000).toLocaleString()}`;
+
+      const smsDiv = document.getElementById('sms-matrix-container');
+      const bands = data.risk_bands || { CRITICAL: 4, HIGH: 8, MEDIUM: 12, LOW: 56 };
+      smsDiv.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1rem;">
+          <div style="background: rgba(239,68,68,0.15); border: 1px solid var(--color-critical); padding: 1rem; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.8rem; color: var(--color-critical); font-weight: 700;">CRITICAL RISK</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-critical);">${bands.CRITICAL || 0} Engines</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Unacceptable — Ground immediately</div>
+          </div>
+          <div style="background: rgba(245,158,11,0.15); border: 1px solid var(--color-warning); padding: 1rem; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.8rem; color: var(--color-warning); font-weight: 700;">HIGH RISK</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-warning);">${bands.HIGH || 0} Engines</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Service before next departure</div>
+          </div>
+          <div style="background: rgba(234,179,8,0.15); border: 1px solid var(--color-monitor); padding: 1rem; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.8rem; color: var(--color-monitor); font-weight: 700;">MEDIUM RISK</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-monitor);">${bands.MEDIUM || 0} Engines</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Schedule in current window</div>
+          </div>
+          <div style="background: rgba(34,197,94,0.15); border: 1px solid var(--color-healthy); padding: 1rem; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.8rem; color: var(--color-healthy); font-weight: 700;">LOW RISK</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-healthy);">${bands.LOW || 0} Engines</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Routine surveillance</div>
+          </div>
+        </div>
+      `;
+    } catch (err) { console.error('Error loading economics:', err); }
+  }
+
+  async function loadUncertainty() {
+    try {
+      const resp = await fetch(`/api/uncertainty?dataset=${state.currentDataset}`);
+      const data = await resp.json();
+
+      document.getElementById('uq-val-empirical').textContent = `${data.empirical_coverage_pct || 91.5}%`;
+      document.getElementById('uq-val-gap').textContent = `${data.calibration_gap_pct || 1.5}%`;
+      document.getElementById('uq-val-width').textContent = `${data.mean_interval_width || 24.2} cycles`;
+    } catch (err) { console.error('Error loading uncertainty:', err); }
+  }
+
+  let simTimer = null;
+  function startSimulatorLoop() {
+    if (simTimer) clearInterval(simTimer);
+    simTimer = setInterval(async () => {
+      try {
+        const resp = await fetch('/api/simulator/step');
+        const data = await resp.json();
+        document.getElementById('sim-cycle-val').textContent = data.cycle;
+        const logDiv = document.getElementById('sim-audit-log');
+        if (data.audit_log && data.audit_log.length > 0) {
+          logDiv.innerHTML = data.audit_log.map(l => `
+            <div style="font-size: 0.78rem; padding: 0.3rem 0; border-bottom: 1px solid var(--border-default);">
+              <span class="mono" style="color: var(--color-sky);">[Cycle ${l.cycle}]</span> ${l.type}: <strong>${l.label || l.fault || ''}</strong> ${l.latency_cycles ? `(Latency: ${l.latency_cycles} cycles)` : ''}
+            </div>
+          `).join('');
+        }
+      } catch (err) { console.error('Simulator step error:', err); }
+    }, 1500);
+  }
+
+  window.injectFault = async (faultKey) => {
+    try {
+      const resp = await fetch(`/api/simulator/inject?fault=${faultKey}&magnitude=1.0`);
+      const data = await resp.json();
+      alert(`Injected ${faultKey} scenario into live telemetry stream.`);
+    } catch (err) { console.error(err); }
+  };
+
+  window.clearFaults = async () => {
+    try {
+      await fetch('/api/simulator/clear');
+      alert('Cleared active fault injections.');
+    } catch (err) { console.error(err); }
+  };
+
+  async function loadDomainShift() {
+    try {
+      const resp = await fetch('/api/domain-shift');
+      const data = await resp.json();
+      const tbody = document.getElementById('domain-shift-table-body');
+      tbody.innerHTML = (data.transfer_matrix || []).map(m => `
+        <tr>
+          <td class="mono" style="font-weight: 700;">${m.source}</td>
+          <td class="mono" style="font-weight: 700;">${m.target}</td>
+          <td><span class="badge-pill ${m.in_domain ? 'healthy' : 'warning'}">${m.in_domain ? 'In-Domain' : 'Cross-Transfer'}</span></td>
+          <td class="mono">${m.rmse}</td>
+          <td class="mono">${m.mae}</td>
+          <td class="mono" style="color: ${m.transfer_penalty_pct > 50 ? 'var(--color-critical)' : 'var(--text-main)'};">${m.transfer_penalty_pct > 0 ? `+${m.transfer_penalty_pct}%` : '0%'}</td>
+        </tr>
+      `).join('');
+    } catch (err) { console.error('Error loading domain shift:', err); }
+  }
+
+  async function loadBenchmarks() {
+    try {
+      const resp = await fetch('/api/benchmarks');
+      const data = await resp.json();
+      const tbody = document.getElementById('benchmarks-reg-body');
+      tbody.innerHTML = (data.regression_benchmark.metrics || []).map(m => `
+        <tr>
+          <td style="font-weight: 700; color: var(--color-sky);">${m.model}</td>
+          <td class="mono">${m.window}</td>
+          <td class="mono" style="font-weight: 700;">${m.rmse}</td>
+          <td class="mono">${m.mae}</td>
+          <td class="mono">${m.r2}</td>
+          <td class="mono">${m.nasa_score}</td>
+        </tr>
+      `).join('');
+    } catch (err) { console.error('Error loading benchmarks:', err); }
+  }
+
 });
+

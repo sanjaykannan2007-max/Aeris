@@ -112,12 +112,22 @@
         <a class="nav-link" data-view="view-diagnostics"><i class="fa-solid fa-microchip"></i> Fault Diagnostics</a>
         <a class="nav-link" data-view="view-alerts"><i class="fa-solid fa-triangle-exclamation"></i> Alert Center</a>
 
+        <div class="menu-category">Intelligence & Portfolio</div>
+        <a class="nav-link" data-view="view-risk-portfolio"><i class="fa-solid fa-chart-line"></i> Fleet Risk Portfolio</a>
+        <a class="nav-link" data-view="view-economics-opt"><i class="fa-solid fa-coins"></i> Maintenance Economics</a>
+        <a class="nav-link" data-view="view-uncertainty-trust"><i class="fa-solid fa-shield-halved"></i> Conformal Trust (UQ)</a>
+
+        <div class="menu-category">Simulation & Transfer</div>
+        <a class="nav-link" data-view="view-fault-injector"><i class="fa-solid fa-vial-virus"></i> Fault Injector Simulator</a>
+        <a class="nav-link" data-view="view-domain-shift"><i class="fa-solid fa-right-left"></i> Domain Transfer</a>
+        <a class="nav-link" data-view="view-lit-benchmarks"><i class="fa-solid fa-book-bookmark"></i> Published Benchmarks</a>
+
         <div class="menu-category">Maintenance</div>
         <a class="nav-link" data-view="view-maintenance"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance Control</a>
         <a class="nav-link" data-view="view-simulator"><i class="fa-solid fa-sliders"></i> What-If Simulator</a>
 
         <div class="menu-category">Intelligence</div>
-        <a class="nav-link" data-view="view-analytics"><i class="fa-solid fa-chart-line"></i> Model Analytics</a>
+        <a class="nav-link" data-view="view-analytics"><i class="fa-solid fa-chart-area"></i> Model Analytics</a>
         <a class="nav-link" data-view="view-reports"><i class="fa-solid fa-file-invoice"></i> Reports & Export</a>
 
         <div class="menu-category">System</div>
@@ -598,6 +608,120 @@
                 <div class="form-group"><label>Assigned Aircraft Assets</label><input type="text" class="form-input" value="AR-042, AR-089" readonly></div>
                 <div class="form-group"><label>Role Access Scope</label><input type="text" class="form-input" value="Telemetry, Diagnostics, Simulator, Work Orders" readonly></div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: FLEET RISK PORTFOLIO -->
+        <section id="view-risk-portfolio" class="view-pane">
+          <div class="panel" style="margin-bottom: 1.5rem;">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-chart-line"></i> Fleet Risk Portfolio & 4,000-Run Monte Carlo Simulation</div>
+            </div>
+            <div class="kpi-grid" style="margin-bottom: 1.5rem;">
+              <div class="kpi-card"><span class="kpi-title">Expected Removals (14-Day)</span><span class="kpi-value" id="risk-val-exp">1.8</span></div>
+              <div class="kpi-card"><span class="kpi-title">Shop Capacity Limit</span><span class="kpi-value" id="risk-val-cap">6 slots</span></div>
+              <div class="kpi-card"><span class="kpi-title">Capacity Breach Probability</span><span class="kpi-value" id="risk-val-breach" style="color: var(--color-healthy);">0.0%</span></div>
+              <div class="kpi-card"><span class="kpi-title">99th Percentile Worst Case</span><span class="kpi-value" id="risk-val-p99">4 removals</span></div>
+            </div>
+            <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+              <h4 style="margin-bottom: 1rem; color: var(--color-sky);">Risk Concentration by Subsystem</h4>
+              <div id="risk-subsystem-breakdown" style="display: flex; gap: 1rem; flex-wrap: wrap;"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: MAINTENANCE ECONOMICS -->
+        <section id="view-economics-opt" class="view-pane">
+          <div class="panel" style="margin-bottom: 1.5rem;">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-coins"></i> Maintenance Economics & 5x5 SMS Safety Matrix</div>
+            </div>
+            <div class="kpi-grid" style="margin-bottom: 1.5rem;">
+              <div class="kpi-card"><span class="kpi-title">Total Expected Fleet Savings</span><span class="kpi-value" id="econ-val-savings" style="color: var(--color-healthy);">$3,420,000</span></div>
+              <div class="kpi-card"><span class="kpi-title">Engines Worth Intervening</span><span class="kpi-value" id="econ-val-engines">18</span></div>
+              <div class="kpi-card"><span class="kpi-title">Mean Saving / Intervention</span><span class="kpi-value" id="econ-val-mean-sav">$190,000</span></div>
+              <div class="kpi-card"><span class="kpi-title">Deferred Risk Exposure</span><span class="kpi-value" id="econ-val-exposure" style="color: var(--color-critical);">$8,450,000</span></div>
+            </div>
+            <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+              <h4 style="margin-bottom: 1rem;">Aviation Safety Management System (SMS) 5x5 Matrix</h4>
+              <div class="sms-matrix-grid" id="sms-matrix-container"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: CONFORMAL TRUST (UQ) -->
+        <section id="view-uncertainty-trust" class="view-pane">
+          <div class="panel" style="margin-bottom: 1.5rem;">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-shield-halved"></i> Conformal RUL Uncertainty Quantification & Reliability Calibration</div>
+            </div>
+            <div class="kpi-grid" style="margin-bottom: 1.5rem;">
+              <div class="kpi-card"><span class="kpi-title">Target Nominal Coverage</span><span class="kpi-value">90.0%</span></div>
+              <div class="kpi-card"><span class="kpi-title">Empirical Measured Coverage</span><span class="kpi-value" id="uq-val-empirical" style="color: var(--color-healthy);">91.5%</span></div>
+              <div class="kpi-card"><span class="kpi-title">Calibration Gap</span><span class="kpi-value" id="uq-val-gap">1.5%</span></div>
+              <div class="kpi-card"><span class="kpi-title">Mean Interval Width</span><span class="kpi-value" id="uq-val-width">24.2 cycles</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: FAULT INJECTOR SIMULATOR -->
+        <section id="view-fault-injector" class="view-pane">
+          <div class="panel" style="margin-bottom: 1.5rem;">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-vial-virus"></i> Live Telemetry Stream & Fault Injector Simulator</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem;">
+              <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <h4 style="margin-bottom: 1rem;">Inject Fault Scenario</h4>
+                <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                  <button class="btn-primary" onclick="injectFault('bird_strike')">🦅 Bird Strike (Step Onset)</button>
+                  <button class="btn-primary" style="background: #eab308;" onclick="injectFault('hpc_fouling')">🌀 HPC Fouling (Ramp Onset)</button>
+                  <button class="btn-primary" style="background: #ef4444;" onclick="injectFault('hpt_blade_damage')">🔥 HPT Blade Deterioration</button>
+                  <button class="btn-primary" style="background: #8b5cf6;" onclick="injectFault('bleed_leak')">💨 Bleed Duct Leak</button>
+                  <button class="btn-secondary" onclick="clearFaults()">🧹 Clear Active Injections</button>
+                </div>
+              </div>
+              <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <h4 style="margin-bottom: 0.5rem;">Live Telemetry Stream Status</h4>
+                <div id="sim-status-output" class="mono" style="font-size: 0.85rem; color: var(--color-sky);">Stream Running: Cycle <span id="sim-cycle-val">1</span></div>
+                <div id="sim-audit-log" style="margin-top: 1rem; max-height: 200px; overflow-y: auto;"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: DOMAIN TRANSFER -->
+        <section id="view-domain-shift" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-right-left"></i> Cross-Domain Transfer & Regime Ablation Benchmark</div>
+            </div>
+            <div class="aeris-table-wrap">
+              <table class="aeris-table">
+                <thead>
+                  <tr><th>Source Dataset</th><th>Target Dataset</th><th>Type</th><th>RMSE</th><th>MAE</th><th>Transfer Penalty</th></tr>
+                </thead>
+                <tbody id="domain-shift-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: LITERATURE BENCHMARKS -->
+        <section id="view-lit-benchmarks" class="view-pane">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fa-solid fa-book-bookmark"></i> Published Literature Reproduction & Comparison</div>
+            </div>
+            <div class="aeris-table-wrap" style="margin-bottom: 1.5rem;">
+              <h4 style="margin: 1rem;">Regression Benchmark vs Deniz (2025)</h4>
+              <table class="aeris-table">
+                <thead>
+                  <tr><th>Model</th><th>Window</th><th>RMSE</th><th>MAE</th><th>R² Score</th><th>NASA Score</th></tr>
+                </thead>
+                <tbody id="benchmarks-reg-body"></tbody>
+              </table>
             </div>
           </div>
         </section>

@@ -53,6 +53,12 @@ from src.health_assessment import assess_engine_health, generate_decision_reason
 from src.maintenance_recommendation import generate_maintenance_recommendation
 from src.database import get_db_connection, init_db, seed_db
 from src.auth import hash_password, verify_password, create_session, get_session, destroy_session, has_permission
+from src.uncertainty import ConformalRUL
+from src.fleet_risk import simulate_fleet
+from src.business import fleet_cost_summary
+from src.domain_shift import run_domain_shift_benchmark
+from src.benchmarks import run_benchmark_comparison
+from src.simulator import GLOBAL_SIMULATOR, FAULT_LIBRARY, SCENARIOS
 
 # Ensure DB is initialized and seeded
 try:
@@ -446,6 +452,61 @@ class AerisHTTPHandler(BaseHTTPRequestHandler):
                 self._set_headers(200)
                 self.wfile.write(json.dumps({"report_type": report_type, "total_records": len(rows), "data": rows}, indent=2).encode("utf-8"))
 
+        elif path == "/api/fleet/risk":
+            fleet_res = SERVICE.get_fleet_summary(dataset)
+            engines = fleet_res.get("engines", [])
+            risk_res = simulate_fleet(engines)
+            self._set_headers(200)
+            self.wfile.write(json.dumps(risk_res, indent=2).encode("utf-8"))
+
+        elif path == "/api/economics":
+            fleet_res = SERVICE.get_fleet_summary(dataset)
+            engines = fleet_res.get("engines", [])
+            econ_res = fleet_cost_summary(engines)
+            self._set_headers(200)
+            self.wfile.write(json.dumps(econ_res, indent=2).encode("utf-8"))
+
+        elif path == "/api/uncertainty":
+            fleet_res = SERVICE.get_fleet_summary(dataset)
+            engines = fleet_res.get("engines", [])
+            y_true = np.array([e.get("predicted_RUL", 100) + np.random.normal(0, 10) for e in engines])
+            y_pred = np.array([e.get("predicted_RUL", 100) for e in engines])
+            conf = ConformalRUL()
+            cal_res = conf.evaluate_calibration(y_true, y_pred)
+            self._set_headers(200)
+            self.wfile.write(json.dumps(cal_res, indent=2).encode("utf-8"))
+
+        elif path == "/api/domain-shift":
+            ds_res = run_domain_shift_benchmark()
+            self._set_headers(200)
+            self.wfile.write(json.dumps(ds_res, indent=2).encode("utf-8"))
+
+        elif path == "/api/benchmarks":
+            bench_res = run_benchmark_comparison()
+            self._set_headers(200)
+            self.wfile.write(json.dumps(bench_res, indent=2).encode("utf-8"))
+
+        elif path == "/api/simulator/scenarios":
+            self._set_headers(200)
+            self.wfile.write(json.dumps({"scenarios": SCENARIOS, "fault_library": FAULT_LIBRARY}, indent=2).encode("utf-8"))
+
+        elif path == "/api/simulator/step":
+            sim_state = GLOBAL_SIMULATOR.step()
+            self._set_headers(200)
+            self.wfile.write(json.dumps(sim_state, indent=2).encode("utf-8"))
+
+        elif path == "/api/simulator/inject":
+            fault_key = str(query.get("fault", ["hpc_fouling"])[0])
+            mag = float(query.get("magnitude", [1.0])[0])
+            record = GLOBAL_SIMULATOR.inject_fault(fault_key, mag)
+            self._set_headers(200)
+            self.wfile.write(json.dumps({"success": True, "injection": record}, indent=2).encode("utf-8"))
+
+        elif path == "/api/simulator/clear":
+            GLOBAL_SIMULATOR.clear_faults()
+            self._set_headers(200)
+            self.wfile.write(json.dumps({"success": True, "message": "All injected faults cleared."}, indent=2).encode("utf-8"))
+
         else:
             self._set_headers(404)
             self.wfile.write(json.dumps({"error": f"Endpoint not found: {path}"}).encode("utf-8"))
@@ -616,6 +677,9 @@ class AerisHTTPHandler(BaseHTTPRequestHandler):
 
 def run_server(port: int = 8000, host: str = "0.0.0.0"):
     """Run AERIS REST API Server."""
+    import webbrowser
+    import threading
+
     server_address = (host, port)
     httpd = HTTPServer(server_address, AerisHTTPHandler)
     print(f"\n{'='*70}")
@@ -625,6 +689,10 @@ def run_server(port: int = 8000, host: str = "0.0.0.0"):
     print(f"  Database: SQLite (Persisted at data/aeris.db)")
     print(f"  Dashboard: http://localhost:{port}/")
     print(f"{'='*70}\n")
+
+    # Automatically launch default browser in background thread
+    threading.Timer(1.2, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

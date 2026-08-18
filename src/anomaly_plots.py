@@ -19,6 +19,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Optional
 
+import matplotlib
+matplotlib.use("Agg")  # Non-interactive backend for headless/multi-threaded execution
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
