@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "index.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "ui/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "index.py"
+    },
+    {
+      "src": "/health",
+      "dest": "index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "ui/$1"
+    }
+  ]
+}
