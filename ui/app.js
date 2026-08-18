@@ -80,6 +80,17 @@ document.addEventListener('DOMContentLoaded', () => {
     cmdPalette.classList.remove('active');
   }
 
+  if (cmdInput) {
+    cmdInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const items = document.querySelectorAll('#cmd-results .cmd-item');
+      items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        item.style.display = !q || text.includes(q) ? 'flex' : 'none';
+      });
+    });
+  }
+
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
@@ -767,15 +778,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 7b. Live Telemetry Streaming Charts Setup
-  let s7Chart = null, s11Chart = null, modelChart = null;
+  let s7Chart = null, s11Chart = null, modelChart = null, liveStreamInterval = null;
 
   function initLiveTelemetryCharts() {
     const s7Ctx = document.getElementById('live-telemetry-s7-chart');
     const s11Ctx = document.getElementById('live-telemetry-s11-chart');
+    const searchInput = document.getElementById('live-search-input');
+    const engineSelect = document.getElementById('live-engine-select');
     if (!s7Ctx || !s11Ctx) return;
 
     if (s7Chart) s7Chart.destroy();
     if (s11Chart) s11Chart.destroy();
+    if (liveStreamInterval) clearInterval(liveStreamInterval);
 
     const labels = Array.from({length: 20}, (_, i) => `t-${20-i}s`);
     const s7Data = Array.from({length: 20}, () => 550 + Math.random() * 8);
@@ -793,11 +807,44 @@ document.addEventListener('DOMContentLoaded', () => {
       options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { display: false }, y: { ticks: { color: '#94a3b8' } } } }
     });
 
+    // ── Search Panel & Engine Filter Handler ──────────────────────────
+    function filterLiveFeed() {
+      const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+      const s7Card = s7Ctx.closest('div[style*="background: var(--bg-card)"]');
+      const s11Card = s11Ctx.closest('div[style*="background: var(--bg-card)"]');
+
+      const s7Match = !query || 's7 hpc outlet temperature °r temp'.includes(query);
+      const s11Match = !query || 's11 hpc outlet pressure psia press'.includes(query);
+
+      if (s7Card) s7Card.style.display = s7Match ? 'block' : 'none';
+      if (s11Card) s11Card.style.display = s11Match ? 'block' : 'none';
+    }
+
+    if (searchInput) {
+      searchInput.removeEventListener('input', filterLiveFeed);
+      searchInput.addEventListener('input', filterLiveFeed);
+    }
+
+    if (engineSelect) {
+      engineSelect.addEventListener('change', (e) => {
+        state.selectedEngineId = parseInt(e.target.value);
+        // Refresh base baseline values according to selected engine
+        const engMultiplier = 1 + (state.selectedEngineId * 0.02);
+        for (let i = 0; i < 20; i++) {
+          s7Chart.data.datasets[0].data[i] = (550 + Math.random() * 8) * engMultiplier;
+          s11Chart.data.datasets[0].data[i] = (47 + Math.random() * 2) * engMultiplier;
+        }
+        s7Chart.update();
+        s11Chart.update();
+      });
+    }
+
     // Continuously stream data points without expanding container
-    setInterval(() => {
+    liveStreamInterval = setInterval(() => {
       if (s7Chart && s11Chart) {
-        const nextS7 = 550 + Math.random() * 10;
-        const nextS11 = 47 + Math.random() * 2.5;
+        const engMultiplier = 1 + (state.selectedEngineId * 0.02);
+        const nextS7 = (550 + Math.random() * 10) * engMultiplier;
+        const nextS11 = (47 + Math.random() * 2.5) * engMultiplier;
 
         s7Chart.data.datasets[0].data.shift();
         s7Chart.data.datasets[0].data.push(nextS7);
@@ -807,8 +854,10 @@ document.addEventListener('DOMContentLoaded', () => {
         s11Chart.data.datasets[0].data.push(nextS11);
         s11Chart.update();
 
-        document.getElementById('live-s7-val').textContent = `${nextS7.toFixed(1)} °R`;
-        document.getElementById('live-s11-val').textContent = `${nextS11.toFixed(1)} psia`;
+        const s7Val = document.getElementById('live-s7-val');
+        const s11Val = document.getElementById('live-s11-val');
+        if (s7Val) s7Val.textContent = `${nextS7.toFixed(1)} °R`;
+        if (s11Val) s11Val.textContent = `${nextS11.toFixed(1)} psia`;
       }
     }, 1500);
   }
